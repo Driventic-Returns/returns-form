@@ -509,10 +509,13 @@ function makeFieldEl(f){
     var ta=document.createElement("textarea");ta.id=f.id;ta.placeholder=f.placeholder||"";ta.style.minHeight="68px";
     ta.addEventListener("input",updateProgress);div.appendChild(ta);
   } else if(f.type==="dropdown"){
-    var sel=document.createElement("select");sel.id=f.id;
-    var def=document.createElement("option");def.value="";def.textContent="- select -";sel.appendChild(def);
-    (f.options||[]).forEach(function(opt){var o=document.createElement("option");o.textContent=opt;sel.appendChild(o);});
-    sel.addEventListener("change",updateProgress);div.appendChild(sel);
+    var listId="dl-"+f.id;
+    var dinp=document.createElement("input");dinp.type="text";dinp.id=f.id;
+    dinp.placeholder="Type or choose...";dinp.setAttribute("list",listId);dinp.setAttribute("autocomplete","off");
+    dinp.addEventListener("input",updateProgress);
+    var dl=document.createElement("datalist");dl.id=listId;
+    (f.options||[]).forEach(function(opt){var o=document.createElement("option");o.value=opt;dl.appendChild(o);});
+    div.appendChild(dinp);div.appendChild(dl);
   } else {
     var inp=document.createElement("input");inp.type="text";inp.id=f.id;inp.placeholder=f.placeholder||"";
     inp.addEventListener("input",updateProgress);div.appendChild(inp);
