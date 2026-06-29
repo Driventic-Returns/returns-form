@@ -503,23 +503,6 @@ function buildFormSections(){
   });
 }
 function makeFieldEl(f){
-  if(f.type==="dropdown"&&f.options&&f.options.length>3){
-    var outer=document.createElement("div");
-    var lbl=document.createElement("label");
-    lbl.style.cssText="font-size:12px;font-weight:500;color:#666;display:block;margin-bottom:6px";lbl.textContent=f.label;
-    var grid=document.createElement("div");grid.className="reason-grid";grid.id="chips-"+f.id;
-    f.options.forEach(function(opt){
-      var label=document.createElement("label");label.className="chip";
-      var inp=document.createElement("input");inp.type="radio";inp.name="radio-"+f.id;inp.value=opt;inp.style.pointerEvents="none";
-      label.appendChild(inp);label.appendChild(document.createTextNode(" "+opt));
-      label.addEventListener("click",function(){
-        grid.querySelectorAll(".chip").forEach(function(c){c.classList.remove("sel");});
-        label.classList.add("sel");updateProgress();
-      });
-      grid.appendChild(label);
-    });
-    outer.appendChild(lbl);outer.appendChild(grid);return outer;
-  }
   var div=document.createElement("div");div.className="field";
   var lbl=document.createElement("label");lbl.textContent=f.label;lbl.setAttribute("for",f.id);div.appendChild(lbl);
   if(f.type==="textarea"){
@@ -564,9 +547,6 @@ function getItems(){
   }).filter(function(i){return i.name;});
 }
 function getFieldValue(f){
-  if(f.type==="dropdown"&&f.options&&f.options.length>3){
-    var checked=document.querySelector("input[name='radio-"+f.id+"']:checked");return checked?checked.value:"";
-  }
   var el=g(f.id);return el?el.value:"";
 }
 function updateProgress(){
