@@ -49,8 +49,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .field input,.field select,.field textarea{padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;font-family:inherit;color:#111;background:#fff;outline:none;width:100%;transition:border-color .15s}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:#111}
 .field textarea{resize:vertical;min-height:68px}
-.items-hdr{display:grid;grid-template-columns:2fr 100px 80px 36px;gap:8px;padding:0 0 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;border-bottom:1px solid #f0f0f0}
-.item-row{display:grid;grid-template-columns:2fr 100px 80px 36px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0}
+.items-hdr{display:grid;grid-template-columns:2fr 130px 130px 36px;gap:8px;padding:0 0 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;border-bottom:1px solid #f0f0f0}
+.item-row{display:grid;grid-template-columns:2fr 130px 130px 36px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0}
 .item-row:last-child{border-bottom:none}
 .item-row input,.item-row select{padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;color:#111;width:100%;outline:none;background:#fff}
 .item-row input:focus,.item-row select:focus{border-color:#111}
@@ -160,7 +160,7 @@ tr:hover td{background:#fafafa}
 #toast.show{transform:translateX(-50%) translateY(0)}
 @media(max-width:600px){
   .g2,.g3{grid-template-columns:1fr}.reason-grid{grid-template-columns:1fr 1fr}
-  .export-grid{grid-template-columns:1fr}.items-hdr,.item-row{grid-template-columns:1fr 90px 70px 32px}
+  .export-grid{grid-template-columns:1fr}.items-hdr,.item-row{grid-template-columns:1fr 90px 90px 32px}
   .topbar{padding:0 1rem}.page{padding:0 .75rem 3rem}
   .detail-head{flex-direction:column;align-items:flex-start}
   .detail-lbl{min-width:100px}
@@ -458,7 +458,7 @@ function buildFormSections(){
     head.appendChild(h2);card.appendChild(head);
     var body=document.createElement("div");body.className="card-body";
     if(sec.isItemsSection){
-      body.innerHTML='<div class="items-hdr"><div>Product</div><div>SKU</div><div>Qty</div><div></div></div><div id="items-list"></div>';
+      body.innerHTML='<div class="items-hdr"><div>Product</div><div>Part Number</div><div>Serial Number</div><div></div></div><div id="items-list"></div>';
       var ab=document.createElement("button");ab.className="btn btn-ghost btn-sm";ab.style.marginTop="10px";
       ab.textContent="+ Add item";ab.addEventListener("click",addItem);
       body.appendChild(ab);card.appendChild(body);c.appendChild(card);
@@ -513,6 +513,20 @@ function makeFieldEl(f){
     var dinp=document.createElement("input");dinp.type="text";dinp.id=f.id;
     dinp.placeholder="Type or choose...";dinp.setAttribute("list",listId);dinp.setAttribute("autocomplete","off");
     dinp.addEventListener("input",updateProgress);
+    dinp.addEventListener("blur",function(){
+      var val=dinp.value.trim();
+      var opts=f.options||[];
+      if(val && opts.indexOf(val)===-1){
+        dinp.style.borderColor="#c0392b";
+        dinp.style.background="#fff8f8";
+        dinp.title="Please select an option from the dropdown list";
+      } else {
+        dinp.style.borderColor="";
+        dinp.style.background="";
+        dinp.title="";
+      }
+      updateProgress();
+    });
     var dl=document.createElement("datalist");dl.id=listId;
     (f.options||[]).forEach(function(opt){var o=document.createElement("option");o.value=opt;dl.appendChild(o);});
     div.appendChild(dinp);div.appendChild(dl);
@@ -536,17 +550,17 @@ function addItem(){
     prodEl=document.createElement("input");prodEl.type="text";prodEl.placeholder="Product name";
   }
   prodEl.addEventListener("change",updateProgress);prodEl.addEventListener("input",updateProgress);
-  var skuInp=document.createElement("input");skuInp.type="text";skuInp.placeholder="SKU-000";
-  var qtyInp=document.createElement("input");qtyInp.type="number";qtyInp.placeholder="1";qtyInp.min="1";qtyInp.value="1";
+  var partInp=document.createElement("input");partInp.type="text";partInp.placeholder="Part number";
+  var serialInp=document.createElement("input");serialInp.type="text";serialInp.placeholder="Serial number";
   var rmBtn=document.createElement("button");rmBtn.className="btn-rm-item";rmBtn.textContent="\xd7";
   rmBtn.addEventListener("click",function(){row.remove();updateProgress();});
-  row.appendChild(prodEl);row.appendChild(skuInp);row.appendChild(qtyInp);row.appendChild(rmBtn);
+  row.appendChild(prodEl);row.appendChild(partInp);row.appendChild(serialInp);row.appendChild(rmBtn);
   g("items-list").appendChild(row);updateProgress();
 }
 function getItems(){
   if(!g("items-list"))return[];
   return Array.from(document.querySelectorAll("#items-list .item-row")).map(function(r){
-    var ch=r.children;return{name:ch[0].value||"",sku:ch[1].value||"",qty:ch[2].value||"1"};
+    var ch=r.children;return{name:ch[0].value||"",partNumber:ch[1].value||"",serialNumber:ch[2].value||""};
   }).filter(function(i){return i.name;});
 }
 function getFieldValue(f){
@@ -566,6 +580,23 @@ g("btn-submit").addEventListener("click",function(){
   var items=getItems();
   if(!items.length){toast("Please add at least one item",false);return;}
   if(!db){toast("Still connecting...",false);return;}
+  // Validate all dropdown fields have a valid option selected
+  var invalidField=null;
+  cfg.sections.forEach(function(sec){
+    if(!sec.visible||sec.isItemsSection||invalidField)return;
+    sec.fields.forEach(function(f){
+      if(f.type!=="dropdown"||invalidField)return;
+      var el=g(f.id); if(!el)return;
+      var val=el.value.trim();
+      if(val && (f.options||[]).indexOf(val)===-1){
+        invalidField=f.label;
+        el.style.borderColor="#c0392b";
+        el.style.background="#fff8f8";
+        el.focus();
+      }
+    });
+  });
+  if(invalidField){toast("Please select an option from the dropdown: "+invalidField,false);return;}
   var data={
     ref:refNum,
     date:firebase.firestore.FieldValue.serverTimestamp(),
@@ -696,11 +727,11 @@ function openDetail(rec){
       var title=document.createElement("div");title.className="detail-sec-title";title.textContent=sec.title;
       secDiv.appendChild(title);
       var tbl=document.createElement("table");tbl.className="detail-items-tbl";
-      tbl.innerHTML='<thead><tr><th>Product</th><th>SKU</th><th>Qty</th></tr></thead>';
+      tbl.innerHTML='<thead><tr><th>Product</th><th>Part Number</th><th>Serial Number</th></tr></thead>';
       var tbody=document.createElement("tbody");
       rec.items.forEach(function(it){
         var tr=document.createElement("tr");
-        tr.innerHTML='<td>'+esc(it.name)+'</td><td>'+esc(it.sku||"-")+'</td><td>'+esc(it.qty)+'</td>';
+        tr.innerHTML='<td>'+esc(it.name)+'</td><td>'+esc(it.partNumber||"-")+'</td><td>'+esc(it.serialNumber||"-")+'</td>';
         tbody.appendChild(tr);
       });
       tbl.appendChild(tbody);secDiv.appendChild(tbl);body.appendChild(secDiv);return;
@@ -949,14 +980,14 @@ function exportPDF(rec, type, sections){
       if(sec.isItemsSection){
         if(!items.length)return;
         y=pSH(y,"Items to be returned");
-        var cw2=[cw*.5,cw*.25,cw*.25];
+        var cw2=[cw*.4,cw*.3,cw*.3];
         doc.setFillColor(17,17,17);doc.rect(m,y,cw,7,"F");
         doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
-        var cx=m+2;["Product","SKU","Qty"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];});y+=7;
+        var cx=m+2;["Product","Part Number","Serial Number"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];});y+=7;
         items.forEach(function(it,idx){
           doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);doc.rect(m,y,cw,6.5,"F");
           doc.setTextColor(17,17,17);doc.setFontSize(8);doc.setFont("helvetica","normal");cx=m+2;
-          [it.name,it.sku||"-",it.qty].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});y+=6.5;
+          [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});y+=6.5;
         });y+=8;return;
       }
       var secFields=sec.fields.filter(function(f){return getRecVal(f.id);});
@@ -1010,14 +1041,14 @@ function exportPDF(rec, type, sections){
     y+=4;
     if(items.length){
       ss("Items in this return");
-      var ic=[cw*.55,cw*.22,cw*.23];
+      var ic=[cw*.4,cw*.3,cw*.3];
       doc.setFillColor(17,17,17);doc.rect(m,y,cw,6,"F");
       doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
-      var cx=m+2;["Description","SKU","Qty"].forEach(function(h,i){doc.text(h,cx,y+4.2);cx+=ic[i];});y+=6;
+      var cx=m+2;["Description","Part Number","Serial Number"].forEach(function(h,i){doc.text(h,cx,y+4.2);cx+=ic[i];});y+=6;
       items.forEach(function(it,idx){
         doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);doc.rect(m,y,cw,6,"F");
         doc.setTextColor(17,17,17);doc.setFontSize(8);doc.setFont("helvetica","normal");cx=m+2;
-        [it.name,it.sku||"-",it.qty].forEach(function(v,i){doc.text(String(v),cx,y+4.2);cx+=ic[i];});y+=6;
+        [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.2);cx+=ic[i];});y+=6;
       });y+=8;
     }
     ss("How to return your items");
