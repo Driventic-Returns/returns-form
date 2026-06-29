@@ -101,6 +101,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .type-text{background:#EBF5FB;color:#1A5276}
 .type-dropdown{background:#EAFAF1;color:#1E8449}
 .type-textarea{background:#FEF9E7;color:#9A6C0A}
+.type-date{background:#F5EEF8;color:#6C3483}
 .afield-opts{padding:10px 12px;background:#fff;border-top:1px solid #f0f0f0}
 .aopt-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
 .aopt-inp{flex:1;padding:5px 8px;border:1px solid #e0e0e0;border-radius:4px;font-size:12px;font-family:inherit;outline:none}
@@ -244,6 +245,9 @@ tr:hover td{background:#fafafa}
           <div class="field"><label>Admin password</label><input id="pw-admin-new" type="text"></div>
         </div>
         <button class="btn btn-black" style="margin-top:14px" id="btn-save-pw">Save passwords</button>
+        <hr style="margin:18px 0;border:none;border-top:1px solid #e0e0e0">
+        <p style="font-size:12px;color:#888;margin-bottom:10px">If section names are not updating, reset the form config to defaults. <strong>This will restore all default sections</strong> but keeps your return records.</p>
+        <button class="btn btn-danger btn-sm" id="btn-reset-cfg">Reset form config to defaults</button>
       </div></div>
     </div>
   </div>
@@ -305,7 +309,7 @@ var DEFAULT_SECTIONS = [
      options:["Faulty / defective","Wrong item sent","Damaged in transit","No longer needed","Incorrect size / fit","Other"]},
     {id:"f-notes",label:"Additional notes",type:"textarea"}
   ]},
-  {id:"resolution",title:"Resolution & processing",visible:true,fields:[
+  {id:"resolution",title:"Return details",visible:true,fields:[
     {id:"f-resolution",label:"Preferred resolution",type:"dropdown",
      options:["Full refund","Exchange / replacement","Store credit","Repair"]},
     {id:"f-condition",label:"Condition of goods",type:"dropdown",
@@ -487,8 +491,8 @@ function buildFormSections(){
         }
       }
     }
-    // Append return date field to the resolution section
-    if(sec.id==="resolution"){
+    // Append return date field to the Return details / resolution section
+    if(sec.id==="resolution" || sec.title.toLowerCase().replace(/\s/g,"").indexOf("returndetail")!==-1){
       var dateDiv=document.createElement("div");dateDiv.className="field mt";
       var dateLbl2=document.createElement("label");dateLbl2.textContent="Return date";dateLbl2.setAttribute("for","return-date");
       var dateInp2=document.createElement("input");dateInp2.type="date";dateInp2.id="return-date";
@@ -508,6 +512,10 @@ function makeFieldEl(f){
   if(f.type==="textarea"){
     var ta=document.createElement("textarea");ta.id=f.id;ta.placeholder=f.placeholder||"";ta.style.minHeight="68px";
     ta.addEventListener("input",updateProgress);div.appendChild(ta);
+  } else if(f.type==="date"){
+    var di=document.createElement("input");di.type="date";di.id=f.id;
+    di.style.maxWidth="200px";
+    di.addEventListener("change",updateProgress);div.appendChild(di);
   } else if(f.type==="dropdown"){
     var listId="dl-"+f.id;
     var dinp=document.createElement("input");dinp.type="text";dinp.id=f.id;
@@ -606,7 +614,12 @@ g("btn-submit").addEventListener("click",function(){
   };
   cfg.sections.forEach(function(sec){
     if(!sec.visible||sec.isItemsSection)return;
-    sec.fields.forEach(function(f){data.fields[f.id]={label:f.label,value:getFieldValue(f)};});
+    sec.fields.forEach(function(f){
+      var raw=getFieldValue(f);
+      // Format date fields as readable string for storage and PDFs
+      var val=(f.type==="date"&&raw)?fmtDateLong(raw):raw;
+      data.fields[f.id]={label:f.label,value:val};
+    });
   });
   data.customer={
     name:(data.fields["f-name"]&&data.fields["f-name"].value)||"",
@@ -632,7 +645,11 @@ function exportFromForm(type){
   var rec={ref:refNum,selectedDate:selectedDate,items:items,fields:{},status:STATUS_OPTIONS[0]};
   cfg.sections.forEach(function(sec){
     if(!sec.visible||sec.isItemsSection)return;
-    sec.fields.forEach(function(f){rec.fields[f.id]={label:f.label,value:getFieldValue(f)};});
+    sec.fields.forEach(function(f){
+      var raw=getFieldValue(f);
+      var val=(f.type==="date"&&raw)?fmtDateLong(raw):raw;
+      rec.fields[f.id]={label:f.label,value:val};
+    });
   });
   rec.reason=(rec.fields["f-reason"]&&rec.fields["f-reason"].value)||"";
   exportPDF(rec,type,cfg.sections);
@@ -866,7 +883,7 @@ function buildAdminSecEl(sec,si){
   sec.fields.forEach(function(f,fi){fieldList.appendChild(buildAdminField(sec,si,f,fi));});
   body.appendChild(fieldList);
   var addFieldRow=document.createElement("div");addFieldRow.className="add-field-row";
-  ["text","textarea","dropdown"].forEach(function(type){
+  ["text","textarea","dropdown","date"].forEach(function(type){
     var b=document.createElement("button");b.className="btn btn-ghost btn-sm";
     b.textContent="+ "+(type.charAt(0).toUpperCase()+type.slice(1))+" field";
     b.addEventListener("click",function(){
@@ -930,6 +947,12 @@ g("btn-save-pw").addEventListener("click",function(){
   if(!s||!a){toast("Both passwords required",false);return;}
   cfg.fbPassStaff=s;cfg.fbPassAdmin=a;
   saveConfig(function(){toast("Passwords saved");});
+});
+g("btn-reset-cfg").addEventListener("click",function(){
+  confirm2("Reset form config","This will restore all default sections and field labels. Your return records will not be affected.",function(){
+    cfg.sections=JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
+    saveConfig(function(){renderAdminSections();buildFormSections();toast("Config reset to defaults");});
+  });
 });
 
 // ═══════════════════════════════════════════
