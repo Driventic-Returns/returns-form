@@ -64,13 +64,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .actions{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px 18px;margin-bottom:1rem}
 .act-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#aaa;margin-bottom:10px}
 .export-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.date-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #f0f0f0}
+.date-row label{font-size:12px;font-weight:500;color:#666;white-space:nowrap}
+.date-row input[type=date]{flex:1;padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;color:#111;background:#fff;outline:none;max-width:200px}
+.date-row input[type=date]:focus{border-color:#111}
+/* ADMIN */
 .admin-tabs{display:flex;gap:0;margin-bottom:1.25rem;border-bottom:2px solid #e0e0e0}
 .atab{padding:9px 18px;border:none;background:none;font-size:13px;font-family:inherit;color:#666;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;transition:all .15s}
 .atab:hover{color:#111}
 .atab.active{color:#111;border-bottom-color:#111}
 .atab-panel{display:none}
 .atab-panel.active{display:block}
-/* ADMIN SECTION CARDS */
 .asec-list{display:flex;flex-direction:column;gap:10px}
 .asec{background:#fff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden}
 .asec-head{padding:11px 14px;display:flex;align-items:center;gap:8px;background:#f8f8f8;border-bottom:1px solid #e0e0e0}
@@ -86,7 +90,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .vis-toggle{font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;color:#666;transition:all .15s}
 .vis-toggle.on{background:#111;color:#fff;border-color:#111}
 .asec-body{padding:14px}
-/* FIELD ROWS */
 .afield-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 .afield-wrap{border:1px solid #e0e0e0;border-radius:8px;overflow:hidden}
 .afield-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8f8f8}
@@ -106,6 +109,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .add-sec-row{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid #e0e0e0}
 .add-sec-row input{flex:1;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;outline:none}
 .add-sec-row input:focus{border-color:#111}
+/* RECORDS */
 .rec-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
 .rec-toolbar h2{font-size:15px;font-weight:600}
 .tbl-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;overflow-x:auto}
@@ -116,15 +120,37 @@ tr:last-child td{border-bottom:none}
 tr:hover td{background:#fafafa}
 .ref-tag{font-family:monospace;font-size:12px;font-weight:600;background:#f0f0f0;padding:2px 8px;border-radius:4px;white-space:nowrap}
 .badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
-.s-pending{background:#FEF9E7;color:#9A6C0A}
-.s-in-review{background:#EBF5FB;color:#1A5276}
-.s-approved{background:#EAFAF1;color:#1E8449}
-.s-rejected{background:#FDEDEC;color:#922B21}
-.s-completed{background:#F2F3F4;color:#424949}
-.stat-sel{padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;outline:none}
+.s-dispatched-from-depot{background:#FEF9E7;color:#9A6C0A}
+.s-received-at-driventic-uk{background:#EBF5FB;color:#1A5276}
+.s-dispatched-from-driventic-uk{background:#EAFAF1;color:#1E8449}
+.s-received-at-driventic-gmbh{background:#F2F3F4;color:#424949}
+.s-pending{background:#F2F3F4;color:#666}
+.stat-sel{padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;font-size:11px;font-family:inherit;background:#fff;cursor:pointer;outline:none;max-width:200px}
 .del-rec-btn{background:none;border:none;cursor:pointer;color:#ccc;font-size:18px;padding:2px 6px;border-radius:4px;transition:all .15s;line-height:1}
 .del-rec-btn:hover{color:#c0392b;background:#fef2f2}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center}
+.view-rec-btn{background:none;border:1px solid #e0e0e0;cursor:pointer;color:#666;font-size:12px;padding:4px 10px;border-radius:4px;transition:all .15s;font-family:inherit;white-space:nowrap}
+.view-rec-btn:hover{border-color:#111;color:#111;background:#f8f8f8}
+/* DETAIL MODAL */
+.detail-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.detail-bg.open{display:flex}
+.detail-panel{background:#fff;border-radius:12px;width:100%;max-width:700px;overflow:hidden;margin:auto}
+.detail-head{padding:16px 20px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;background:#f8f8f8;gap:12px;flex-wrap:wrap}
+.detail-head-left h3{font-size:15px;font-weight:600;margin-bottom:2px}
+.detail-head-left p{font-size:12px;color:#888}
+.detail-head-right{display:flex;gap:8px;flex-wrap:wrap}
+.detail-body{padding:20px}
+.detail-sec{margin-bottom:18px}
+.detail-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f0f0f0}
+.detail-row{display:flex;gap:8px;margin-bottom:5px;font-size:13px}
+.detail-lbl{color:#888;flex-shrink:0;min-width:140px;font-size:12px}
+.detail-val{color:#111;font-weight:500}
+.detail-items-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+.detail-items-tbl th{padding:7px 10px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#666;background:#f8f8f8;border-bottom:1px solid #e0e0e0}
+.detail-items-tbl td{padding:8px 10px;border-bottom:1px solid #f0f0f0;color:#333}
+.detail-items-tbl tr:last-child td{border-bottom:none}
+.detail-export-row{display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid #e0e0e0;flex-wrap:wrap}
+/* CONFIRM MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:none;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
 .modal{background:#fff;border-radius:12px;padding:24px;max-width:360px;width:90%;text-align:center}
 .modal h3{font-size:16px;font-weight:600;margin-bottom:8px}
@@ -136,6 +162,8 @@ tr:hover td{background:#fafafa}
   .g2,.g3{grid-template-columns:1fr}.reason-grid{grid-template-columns:1fr 1fr}
   .export-grid{grid-template-columns:1fr}.items-hdr,.item-row{grid-template-columns:1fr 90px 70px 32px}
   .topbar{padding:0 1rem}.page{padding:0 .75rem 3rem}
+  .detail-head{flex-direction:column;align-items:flex-start}
+  .detail-lbl{min-width:100px}
 }
 </style>
 </head>
@@ -166,10 +194,15 @@ tr:hover td{background:#fafafa}
   </div>
   <div class="prog-wrap"><div class="prog-bar" id="prog"></div></div>
 
+  <!-- FORM PAGE -->
   <div id="page-form" class="page">
     <div id="form-sections-container"></div>
     <div class="actions">
       <div class="act-title">Save &amp; export</div>
+      <div class="date-row">
+        <label for="return-date">Return date</label>
+        <input type="date" id="return-date">
+      </div>
       <button class="btn btn-black btn-full" id="btn-submit" style="margin-bottom:10px">Submit &amp; save return</button>
       <div class="export-grid">
         <button class="btn btn-black btn-full" id="btn-company">&#8595; Company copy</button>
@@ -179,6 +212,7 @@ tr:hover td{background:#fafafa}
     </div>
   </div>
 
+  <!-- RECORDS PAGE -->
   <div id="page-records" class="page" style="display:none">
     <div class="rec-toolbar">
       <h2>Return records</h2>
@@ -186,19 +220,20 @@ tr:hover td{background:#fafafa}
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Reference</th><th>Date</th><th>Customer</th><th>Order no.</th><th>Reason</th><th>Status</th><th>Update</th><th></th></tr></thead>
+        <thead><tr><th>Reference</th><th>Date</th><th>Customer</th><th>Items</th><th>Status</th><th>Update status</th><th>View</th><th></th></tr></thead>
         <tbody id="records-body"></tbody>
       </table>
     </div>
   </div>
 
+  <!-- ADMIN PAGE -->
   <div id="page-admin" class="page" style="display:none">
     <div class="admin-tabs">
       <button class="atab active" data-tab="sections">Form sections</button>
       <button class="atab" data-tab="passwords">Passwords</button>
     </div>
     <div class="atab-panel active" id="tab-sections">
-      <p style="font-size:12px;color:#888;margin-bottom:12px">Use the &#9650; &#9660; arrows to reorder sections and fields. Click any title or label to rename it. All changes save automatically.</p>
+      <p style="font-size:12px;color:#888;margin-bottom:12px">Use &#9650; &#9660; to reorder sections and fields. Click any title or label to rename it. All changes save automatically.</p>
       <div class="asec-list" id="admin-sections-list"></div>
       <div class="add-sec-row">
         <input id="new-sec-title" placeholder="New section title...">
@@ -218,6 +253,25 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
+<!-- RECORD DETAIL MODAL -->
+<div class="detail-bg" id="detail-bg">
+  <div class="detail-panel">
+    <div class="detail-head">
+      <div class="detail-head-left">
+        <h3 id="detail-ref">Return details</h3>
+        <p id="detail-meta"></p>
+      </div>
+      <div class="detail-head-right">
+        <button class="btn btn-black btn-sm" id="detail-btn-company">&#8595; Company copy</button>
+        <button class="btn btn-outline btn-sm" id="detail-btn-custslip">&#8595; Customer slip</button>
+        <button class="btn btn-ghost btn-sm" id="detail-close">Close</button>
+      </div>
+    </div>
+    <div class="detail-body" id="detail-body"></div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
 <div class="modal-bg" id="modal-bg">
   <div class="modal">
     <h3 id="modal-title">Are you sure?</h3>
@@ -232,86 +286,93 @@ tr:hover td{background:#fafafa}
 
 <script>
 // ═══════════════════════════════════════════
-// HARDCODED PASSWORDS — always work regardless
-// of what is stored in Firebase
+// CONSTANTS
 // ═══════════════════════════════════════════
 var HC_STAFF = "Driventic2026";
 var HC_ADMIN = "Admin99";
-
 var LOGO = "data:image/png;base64,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";
 var ADDR = ["Driventic UK Limited","Unit 8, Maricott Court","Holywell Business Park","Northfield Road","Southam","Warwickshire","CV47 0FT"];
+var STATUS_OPTIONS = ["Dispatched from Depot","Received at Driventic UK","Dispatched from Driventic UK","Received at Driventic GmbH"];
 
 var DEFAULT_SECTIONS = [
-  {id:"customer", title:"Customer details", visible:true, fields:[
+  {id:"customer",title:"Customer details",visible:true,fields:[
     {id:"f-name",  label:"Full name",        type:"text"},
     {id:"f-email", label:"Email address",    type:"text"},
     {id:"f-phone", label:"Phone number",     type:"text"},
     {id:"f-order", label:"Order number",     type:"text"},
     {id:"f-addr",  label:"Shipping address", type:"textarea"}
   ]},
-  {id:"items", title:"Items being returned", visible:true, isItemsSection:true,
-   itemProducts:["Product A","Product B","Product C"], fields:[]},
-  {id:"reason", title:"Reason for return", visible:true, fields:[
-    {id:"f-reason", label:"Reason", type:"dropdown",
+  {id:"items",title:"Items being returned",visible:true,isItemsSection:true,
+   itemProducts:["Product A","Product B","Product C"],fields:[]},
+  {id:"reason",title:"Reason for return",visible:true,fields:[
+    {id:"f-reason",label:"Reason",type:"dropdown",
      options:["Faulty / defective","Wrong item sent","Damaged in transit","No longer needed","Incorrect size / fit","Other"]},
-    {id:"f-notes", label:"Additional notes", type:"textarea"}
+    {id:"f-notes",label:"Additional notes",type:"textarea"}
   ]},
-  {id:"resolution", title:"Resolution & processing", visible:true, fields:[
-    {id:"f-resolution", label:"Preferred resolution", type:"dropdown",
+  {id:"resolution",title:"Resolution & processing",visible:true,fields:[
+    {id:"f-resolution",label:"Preferred resolution",type:"dropdown",
      options:["Full refund","Exchange / replacement","Store credit","Repair"]},
-    {id:"f-condition", label:"Condition of goods", type:"dropdown",
+    {id:"f-condition",label:"Condition of goods",type:"dropdown",
      options:["Unopened / sealed","Opened, unused","Used - good","Used - damaged"]},
-    {id:"f-agent", label:"Processed by", type:"text"}
+    {id:"f-agent",label:"Processed by",type:"text"}
   ]}
 ];
 
-// cfg holds live state — sections come from Firebase if available
-var cfg = { sections: JSON.parse(JSON.stringify(DEFAULT_SECTIONS)), fbPassStaff:"", fbPassAdmin:"" };
-var itemCount=0, refNum="", today="", db=null, isAdmin=false, modalCb=null;
+var cfg={sections:JSON.parse(JSON.stringify(DEFAULT_SECTIONS)),fbPassStaff:"",fbPassAdmin:""};
+var itemCount=0, refNum="", selectedDate="", selectedDateRaw="";
+var db=null, isAdmin=false, modalCb=null, activeRecord=null;
 
 // ═══════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════
 function g(id){return document.getElementById(id);}
 function toast(msg,ok){
-  var el=g("toast"); el.textContent=msg;
-  el.style.background=ok===false?"#c0392b":"#111";
-  el.classList.add("show"); setTimeout(function(){el.classList.remove("show");},2600);
+  var el=g("toast");el.textContent=msg;el.style.background=ok===false?"#c0392b":"#111";
+  el.classList.add("show");setTimeout(function(){el.classList.remove("show");},2600);
 }
 function genRef(){return "FRT-"+Math.floor(100000+Math.random()*900000);}
 function genId(){return "f-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
-function fmtDate(ts){
+function fmtDateFromTs(ts){
   if(!ts)return "-";
   var d=ts.toDate?ts.toDate():new Date(ts);
   return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
 }
+function fmtDateLong(str){
+  // "2026-06-29" -> "29 June 2026"
+  if(!str)return "";
+  var parts=str.split("-");
+  if(parts.length!==3)return str;
+  var d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  return d.toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"});
+}
+function todayInputVal(){
+  var now=new Date();
+  var y=now.getFullYear(), m=String(now.getMonth()+1).padStart(2,"0"), d=String(now.getDate()).padStart(2,"0");
+  return y+"-"+m+"-"+d;
+}
+function statusClass(s){return(s||"pending").toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");}
 function confirm2(title,msg,cb){
-  g("modal-title").textContent=title; g("modal-msg").textContent=msg;
-  modalCb=cb; g("modal-bg").classList.add("open");
+  g("modal-title").textContent=title;g("modal-msg").textContent=msg;
+  modalCb=cb;g("modal-bg").classList.add("open");
 }
 g("modal-cancel").addEventListener("click",function(){g("modal-bg").classList.remove("open");});
-g("modal-confirm").addEventListener("click",function(){g("modal-bg").classList.remove("open"); if(modalCb)modalCb();});
+g("modal-confirm").addEventListener("click",function(){g("modal-bg").classList.remove("open");if(modalCb)modalCb();});
 
 // ═══════════════════════════════════════════
-// LOGIN — hardcoded passwords ALWAYS work.
-// Firebase-stored passwords are checked too
-// if set, but never override the hardcoded ones.
+// LOGIN
 // ═══════════════════════════════════════════
 g("btn-login").addEventListener("click",function(){
-  var val=g("pw-input").value.trim(); g("login-error").textContent="";
-  // Always accept hardcoded passwords first
-  if(val===HC_ADMIN){isAdmin=true; doLogin(); return;}
-  if(val===HC_STAFF){isAdmin=false; doLogin(); return;}
-  // Also accept Firebase-stored passwords if different
-  if(cfg.fbPassAdmin&&val===cfg.fbPassAdmin){isAdmin=true; doLogin(); return;}
-  if(cfg.fbPassStaff&&val===cfg.fbPassStaff){isAdmin=false; doLogin(); return;}
+  var val=g("pw-input").value.trim();g("login-error").textContent="";
+  if(val===HC_ADMIN){isAdmin=true;doLogin();return;}
+  if(val===HC_STAFF){isAdmin=false;doLogin();return;}
+  if(cfg.fbPassAdmin&&val===cfg.fbPassAdmin){isAdmin=true;doLogin();return;}
+  if(cfg.fbPassStaff&&val===cfg.fbPassStaff){isAdmin=false;doLogin();return;}
   g("login-error").textContent="Incorrect password. Please try again.";
-  g("pw-input").value=""; g("pw-input").focus();
+  g("pw-input").value="";g("pw-input").focus();
 });
 g("pw-input").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-login").click();});
-
 function doLogin(){
-  g("login-screen").style.display="none"; g("app").style.display="block";
+  g("login-screen").style.display="none";g("app").style.display="block";
   loadScripts(function(){loadConfig(function(){showPage("form");});});
 }
 
@@ -320,8 +381,8 @@ function doLogin(){
 // ═══════════════════════════════════════════
 function loadScripts(cb){
   function one(src,next){
-    var s=document.createElement("script"); s.src=src; s.onload=next;
-    s.onerror=function(){toast("Failed to load scripts. Check internet connection.",false);};
+    var s=document.createElement("script");s.src=src;s.onload=next;
+    s.onerror=function(){toast("Failed to load scripts.",false);};
     document.head.appendChild(s);
   }
   one("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js",function(){
@@ -335,37 +396,29 @@ function loadScripts(cb){
           messagingSenderId:"777449072637",
           appId:"1:777449072637:web:d3393e7eb671e2cd715b94"
         });}catch(e){}
-        db=firebase.firestore(); cb();
+        db=firebase.firestore();cb();
       });
     });
   });
 }
 
 // ═══════════════════════════════════════════
-// CONFIG — load sections from Firebase.
-// Passwords from Firebase are stored separately
-// and never block the hardcoded passwords.
+// CONFIG
 // ═══════════════════════════════════════════
 function loadConfig(cb){
   db.collection("config").doc("main").get()
     .then(function(snap){
       if(snap.exists){
         var d=snap.data();
-        if(d.sections&&d.sections.length) cfg.sections=d.sections;
-        // Store Firebase passwords separately — they don't override hardcoded ones
-        if(d.passwords){
-          cfg.fbPassStaff=d.passwords.staff||"";
-          cfg.fbPassAdmin=d.passwords.admin||"";
-        }
-      }
-      cb();
+        if(d.sections&&d.sections.length)cfg.sections=d.sections;
+        if(d.passwords){cfg.fbPassStaff=d.passwords.staff||"";cfg.fbPassAdmin=d.passwords.admin||"";}
+      }cb();
     }).catch(function(){cb();});
 }
 function saveConfig(cb){
-  // Save sections + current active passwords (hardcoded take precedence on login)
   db.collection("config").doc("main").set({
-    sections: cfg.sections,
-    passwords: {staff: cfg.fbPassStaff||HC_STAFF, admin: cfg.fbPassAdmin||HC_ADMIN}
+    sections:cfg.sections,
+    passwords:{staff:cfg.fbPassStaff||HC_STAFF,admin:cfg.fbPassAdmin||HC_ADMIN}
   }).then(function(){if(cb)cb();}).catch(function(e){toast(e.message,false);});
 }
 
@@ -391,133 +444,148 @@ g("nav-admin").addEventListener("click",   function(){showPage("admin");});
 // ═══════════════════════════════════════════
 function initForm(){
   refNum=genRef();
-  today=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"});
+  selectedDateRaw=todayInputVal();
+  selectedDate=fmtDateLong(selectedDateRaw);
+  g("return-date").value=selectedDateRaw;
   g("ref-display").textContent=refNum;
-  g("btn-submit").textContent="Submit & save return"; g("btn-submit").disabled=false;
-  buildFormSections(); updateProgress();
+  g("btn-submit").textContent="Submit & save return";g("btn-submit").disabled=false;
+  buildFormSections();updateProgress();
 }
+g("return-date").addEventListener("change",function(){
+  selectedDateRaw=g("return-date").value;
+  selectedDate=fmtDateLong(selectedDateRaw)||selectedDate;
+});
+
 function buildFormSections(){
-  var c=g("form-sections-container"); c.innerHTML="";
+  var c=g("form-sections-container");c.innerHTML="";
   cfg.sections.forEach(function(sec){
     if(!sec.visible)return;
-    var card=document.createElement("div"); card.className="card"; card.id="sec-"+sec.id;
-    var head=document.createElement("div"); head.className="card-head";
-    var h2=document.createElement("h2"); h2.textContent=sec.title;
-    head.appendChild(h2); card.appendChild(head);
-    var body=document.createElement("div"); body.className="card-body";
+    var card=document.createElement("div");card.className="card";card.id="sec-"+sec.id;
+    var head=document.createElement("div");head.className="card-head";
+    var h2=document.createElement("h2");h2.textContent=sec.title;
+    head.appendChild(h2);card.appendChild(head);
+    var body=document.createElement("div");body.className="card-body";
     if(sec.isItemsSection){
       body.innerHTML='<div class="items-hdr"><div>Product</div><div>SKU</div><div>Qty</div><div></div></div><div id="items-list"></div>';
-      var ab=document.createElement("button"); ab.className="btn btn-ghost btn-sm"; ab.style.marginTop="10px";
-      ab.textContent="+ Add item"; ab.addEventListener("click",addItem);
-      body.appendChild(ab); card.appendChild(body); c.appendChild(card);
-      itemCount=0; addItem(); return;
+      var ab=document.createElement("button");ab.className="btn btn-ghost btn-sm";ab.style.marginTop="10px";
+      ab.textContent="+ Add item";ab.addEventListener("click",addItem);
+      body.appendChild(ab);card.appendChild(body);c.appendChild(card);
+      itemCount=0;addItem();return;
     }
     var i=0;
     while(i<sec.fields.length){
       var f=sec.fields[i];
       if(f.type==="textarea"){
-        var w=document.createElement("div"); if(i>0)w.className="mt"; w.appendChild(makeFieldEl(f)); body.appendChild(w); i++;
+        var w=document.createElement("div");if(i>0)w.className="mt";w.appendChild(makeFieldEl(f));body.appendChild(w);i++;
       } else if(f.type==="dropdown"){
         var nx=sec.fields[i+1];
         if(nx&&nx.type!=="textarea"){
-          var row=document.createElement("div"); row.className="g2 mt";
-          row.appendChild(makeFieldEl(f)); row.appendChild(makeFieldEl(nx)); body.appendChild(row); i+=2;
+          var row=document.createElement("div");row.className="g2 mt";
+          row.appendChild(makeFieldEl(f));row.appendChild(makeFieldEl(nx));body.appendChild(row);i+=2;
         } else {
-          var w=document.createElement("div"); if(i>0)w.className="mt"; w.appendChild(makeFieldEl(f)); body.appendChild(w); i++;
+          var w=document.createElement("div");if(i>0)w.className="mt";w.appendChild(makeFieldEl(f));body.appendChild(w);i++;
         }
       } else {
         var nx=sec.fields[i+1];
         if(nx&&nx.type==="text"){
-          var row=document.createElement("div"); row.className=i===0?"g2":"g2 mt";
-          row.appendChild(makeFieldEl(f)); row.appendChild(makeFieldEl(nx)); body.appendChild(row); i+=2;
+          var row=document.createElement("div");row.className=i===0?"g2":"g2 mt";
+          row.appendChild(makeFieldEl(f));row.appendChild(makeFieldEl(nx));body.appendChild(row);i+=2;
         } else {
-          var w=document.createElement("div"); if(i>0)w.className="mt"; w.appendChild(makeFieldEl(f)); body.appendChild(w); i++;
+          var w=document.createElement("div");if(i>0)w.className="mt";w.appendChild(makeFieldEl(f));body.appendChild(w);i++;
         }
       }
     }
-    card.appendChild(body); c.appendChild(card);
+    card.appendChild(body);c.appendChild(card);
   });
 }
 function makeFieldEl(f){
   if(f.type==="dropdown"&&f.options&&f.options.length>3){
     var outer=document.createElement("div");
     var lbl=document.createElement("label");
-    lbl.style.cssText="font-size:12px;font-weight:500;color:#666;display:block;margin-bottom:6px"; lbl.textContent=f.label;
-    var grid=document.createElement("div"); grid.className="reason-grid"; grid.id="chips-"+f.id;
+    lbl.style.cssText="font-size:12px;font-weight:500;color:#666;display:block;margin-bottom:6px";lbl.textContent=f.label;
+    var grid=document.createElement("div");grid.className="reason-grid";grid.id="chips-"+f.id;
     f.options.forEach(function(opt){
-      var label=document.createElement("label"); label.className="chip";
-      var inp=document.createElement("input"); inp.type="radio"; inp.name="radio-"+f.id; inp.value=opt; inp.style.pointerEvents="none";
-      label.appendChild(inp); label.appendChild(document.createTextNode(" "+opt));
+      var label=document.createElement("label");label.className="chip";
+      var inp=document.createElement("input");inp.type="radio";inp.name="radio-"+f.id;inp.value=opt;inp.style.pointerEvents="none";
+      label.appendChild(inp);label.appendChild(document.createTextNode(" "+opt));
       label.addEventListener("click",function(){
         grid.querySelectorAll(".chip").forEach(function(c){c.classList.remove("sel");});
-        label.classList.add("sel"); updateProgress();
+        label.classList.add("sel");updateProgress();
       });
       grid.appendChild(label);
     });
-    outer.appendChild(lbl); outer.appendChild(grid); return outer;
+    outer.appendChild(lbl);outer.appendChild(grid);return outer;
   }
-  var div=document.createElement("div"); div.className="field";
-  var lbl=document.createElement("label"); lbl.textContent=f.label; lbl.setAttribute("for",f.id); div.appendChild(lbl);
+  var div=document.createElement("div");div.className="field";
+  var lbl=document.createElement("label");lbl.textContent=f.label;lbl.setAttribute("for",f.id);div.appendChild(lbl);
   if(f.type==="textarea"){
-    var ta=document.createElement("textarea"); ta.id=f.id; ta.placeholder=f.placeholder||""; ta.style.minHeight="68px";
-    ta.addEventListener("input",updateProgress); div.appendChild(ta);
+    var ta=document.createElement("textarea");ta.id=f.id;ta.placeholder=f.placeholder||"";ta.style.minHeight="68px";
+    ta.addEventListener("input",updateProgress);div.appendChild(ta);
   } else if(f.type==="dropdown"){
-    var sel=document.createElement("select"); sel.id=f.id;
-    var def=document.createElement("option"); def.value=""; def.textContent="- select -"; sel.appendChild(def);
-    (f.options||[]).forEach(function(opt){var o=document.createElement("option"); o.textContent=opt; sel.appendChild(o);});
-    sel.addEventListener("change",updateProgress); div.appendChild(sel);
+    var sel=document.createElement("select");sel.id=f.id;
+    var def=document.createElement("option");def.value="";def.textContent="- select -";sel.appendChild(def);
+    (f.options||[]).forEach(function(opt){var o=document.createElement("option");o.textContent=opt;sel.appendChild(o);});
+    sel.addEventListener("change",updateProgress);div.appendChild(sel);
   } else {
-    var inp=document.createElement("input"); inp.type="text"; inp.id=f.id; inp.placeholder=f.placeholder||"";
-    inp.addEventListener("input",updateProgress); div.appendChild(inp);
+    var inp=document.createElement("input");inp.type="text";inp.id=f.id;inp.placeholder=f.placeholder||"";
+    inp.addEventListener("input",updateProgress);div.appendChild(inp);
   }
   return div;
 }
-function getItemProducts(){var s=cfg.sections.find(function(x){return x.isItemsSection;}); return(s&&s.itemProducts)||[];}
+function getItemProducts(){var s=cfg.sections.find(function(x){return x.isItemsSection;});return(s&&s.itemProducts)||[];}
 function addItem(){
   if(!g("items-list"))return;
-  itemCount++; var id=itemCount;
-  var row=document.createElement("div"); row.className="item-row"; row.id="item-"+id;
-  var products=getItemProducts(), prodEl;
+  itemCount++;var id=itemCount;
+  var row=document.createElement("div");row.className="item-row";row.id="item-"+id;
+  var products=getItemProducts(),prodEl;
   if(products.length){
     prodEl=document.createElement("select");
-    var def=document.createElement("option"); def.value=""; def.textContent="- select -"; prodEl.appendChild(def);
-    products.forEach(function(p){var o=document.createElement("option"); o.textContent=p; prodEl.appendChild(o);});
+    var def=document.createElement("option");def.value="";def.textContent="- select -";prodEl.appendChild(def);
+    products.forEach(function(p){var o=document.createElement("option");o.textContent=p;prodEl.appendChild(o);});
   } else {
-    prodEl=document.createElement("input"); prodEl.type="text"; prodEl.placeholder="Product name";
+    prodEl=document.createElement("input");prodEl.type="text";prodEl.placeholder="Product name";
   }
-  prodEl.addEventListener("change",updateProgress); prodEl.addEventListener("input",updateProgress);
-  var skuInp=document.createElement("input"); skuInp.type="text"; skuInp.placeholder="SKU-000";
-  var qtyInp=document.createElement("input"); qtyInp.type="number"; qtyInp.placeholder="1"; qtyInp.min="1"; qtyInp.value="1";
-  var rmBtn=document.createElement("button"); rmBtn.className="btn-rm-item"; rmBtn.textContent="\xd7";
-  rmBtn.addEventListener("click",function(){row.remove(); updateProgress();});
-  row.appendChild(prodEl); row.appendChild(skuInp); row.appendChild(qtyInp); row.appendChild(rmBtn);
-  g("items-list").appendChild(row); updateProgress();
+  prodEl.addEventListener("change",updateProgress);prodEl.addEventListener("input",updateProgress);
+  var skuInp=document.createElement("input");skuInp.type="text";skuInp.placeholder="SKU-000";
+  var qtyInp=document.createElement("input");qtyInp.type="number";qtyInp.placeholder="1";qtyInp.min="1";qtyInp.value="1";
+  var rmBtn=document.createElement("button");rmBtn.className="btn-rm-item";rmBtn.textContent="\xd7";
+  rmBtn.addEventListener("click",function(){row.remove();updateProgress();});
+  row.appendChild(prodEl);row.appendChild(skuInp);row.appendChild(qtyInp);row.appendChild(rmBtn);
+  g("items-list").appendChild(row);updateProgress();
 }
 function getItems(){
   if(!g("items-list"))return[];
   return Array.from(document.querySelectorAll("#items-list .item-row")).map(function(r){
-    var ch=r.children; return{name:ch[0].value||"",sku:ch[1].value||"",qty:ch[2].value||"1"};
+    var ch=r.children;return{name:ch[0].value||"",sku:ch[1].value||"",qty:ch[2].value||"1"};
   }).filter(function(i){return i.name;});
 }
 function getFieldValue(f){
   if(f.type==="dropdown"&&f.options&&f.options.length>3){
-    var checked=document.querySelector("input[name='radio-"+f.id+"']:checked"); return checked?checked.value:"";
+    var checked=document.querySelector("input[name='radio-"+f.id+"']:checked");return checked?checked.value:"";
   }
-  var el=g(f.id); return el?el.value:"";
+  var el=g(f.id);return el?el.value:"";
 }
 function updateProgress(){
   var total=0,filled=0;
   cfg.sections.forEach(function(sec){
     if(!sec.visible||sec.isItemsSection)return;
-    sec.fields.forEach(function(f){total++; if(getFieldValue(f).trim())filled++;});
+    sec.fields.forEach(function(f){total++;if(getFieldValue(f).trim())filled++;});
   });
   g("prog").style.width=(total?Math.round(filled/total*100):0)+"%";
 }
+
+// SUBMIT
 g("btn-submit").addEventListener("click",function(){
   var items=getItems();
   if(!items.length){toast("Please add at least one item",false);return;}
   if(!db){toast("Still connecting...",false);return;}
-  var data={ref:refNum,date:firebase.firestore.FieldValue.serverTimestamp(),status:"Pending",items:items,fields:{}};
+  var data={
+    ref:refNum,
+    date:firebase.firestore.FieldValue.serverTimestamp(),
+    selectedDate:selectedDate,
+    status:STATUS_OPTIONS[0],
+    items:items,fields:{}
+  };
   cfg.sections.forEach(function(sec){
     if(!sec.visible||sec.isItemsSection)return;
     sec.fields.forEach(function(f){data.fields[f.id]={label:f.label,value:getFieldValue(f)};});
@@ -527,14 +595,30 @@ g("btn-submit").addEventListener("click",function(){
     orderNum:(data.fields["f-order"]&&data.fields["f-order"].value)||""
   };
   data.reason=(data.fields["f-reason"]&&data.fields["f-reason"].value)||"";
-  var btn=g("btn-submit"); btn.textContent="Saving..."; btn.disabled=true;
+  var btn=g("btn-submit");btn.textContent="Saving...";btn.disabled=true;
   db.collection("returns").doc(refNum).set(data)
-    .then(function(){btn.textContent="Saved - export documents below"; toast("Return "+refNum+" saved");})
-    .catch(function(e){toast("Error: "+e.message,false); btn.textContent="Submit & save return"; btn.disabled=false;});
+    .then(function(){btn.textContent="Saved - export documents below";toast("Return "+refNum+" saved");})
+    .catch(function(e){toast("Error: "+e.message,false);btn.textContent="Submit & save return";btn.disabled=false;});
 });
 g("btn-clear").addEventListener("click",function(){
-  if(!confirm("Clear all data and start a new return?"))return; initForm();
+  if(!confirm("Clear all data and start a new return?"))return;initForm();
 });
+
+// FORM PDF EXPORT
+g("btn-company").addEventListener("click",  function(){exportFromForm("company");});
+g("btn-custslip").addEventListener("click", function(){exportFromForm("customer");});
+function exportFromForm(type){
+  var items=getItems();
+  if(!items.length){toast("Please add at least one item",false);return;}
+  // Build record-like object from current form
+  var rec={ref:refNum,selectedDate:selectedDate,items:items,fields:{},status:STATUS_OPTIONS[0]};
+  cfg.sections.forEach(function(sec){
+    if(!sec.visible||sec.isItemsSection)return;
+    sec.fields.forEach(function(f){rec.fields[f.id]={label:f.label,value:getFieldValue(f)};});
+  });
+  rec.reason=(rec.fields["f-reason"]&&rec.fields["f-reason"].value)||"";
+  exportPDF(rec,type,cfg.sections);
+}
 
 // ═══════════════════════════════════════════
 // RECORDS
@@ -543,36 +627,62 @@ function initRecords(){
   if(!db){toast("Connecting...",false);return;}
   g("records-body").innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:#888">Loading...</td></tr>';
   db.collection("returns").orderBy("date","desc").get().then(function(snap){
-    var rows=[]; snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
-    if(!rows.length){g("records-body").innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:#888">No returns yet</td></tr>';return;}
+    var rows=[];snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
+    if(!rows.length){
+      g("records-body").innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:#888">No returns yet</td></tr>';return;
+    }
     g("records-body").innerHTML=rows.map(function(r){
-      var sc=(r.status||"pending").toLowerCase().replace(/\s+/g,"-");
-      var opts=["Pending","In review","Approved","Rejected","Completed"].map(function(s){
+      var sc=statusClass(r.status);
+      var opts=STATUS_OPTIONS.map(function(s){
         return'<option'+(s===r.status?" selected":"")+">"+s+"</option>";
       }).join("");
+      var itemSummary=r.items?r.items.slice(0,2).map(function(i){return i.name;}).join(", ")+(r.items.length>2?" +"+( r.items.length-2)+" more":""):"-";
       return'<tr>'+
         '<td><span class="ref-tag">'+(r.ref||r.id)+'</span></td>'+
-        '<td>'+fmtDate(r.date)+'</td>'+
+        '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
         '<td>'+(r.customer&&r.customer.name||"-")+'</td>'+
-        '<td>'+(r.customer&&r.customer.orderNum||"-")+'</td>'+
-        '<td>'+(r.reason||"-")+'</td>'+
-        '<td><span class="badge s-'+sc+'">'+(r.status||"Pending")+'</span></td>'+
+        '<td style="color:#666;font-size:12px">'+itemSummary+'</td>'+
+        '<td><span class="badge s-'+sc+'">'+(r.status||STATUS_OPTIONS[0])+'</span></td>'+
         '<td><select class="stat-sel" data-id="'+r.id+'">'+opts+'</select></td>'+
+        '<td><button class="view-rec-btn" data-id="'+r.id+'">View</button></td>'+
         '<td><button class="del-rec-btn" data-id="'+r.id+'">&times;</button></td>'+
         '</tr>';
     }).join("");
+
+    // Status change
     document.querySelectorAll(".stat-sel").forEach(function(sel){
       sel.addEventListener("change",function(){
-        db.collection("returns").doc(sel.dataset.id).update({status:sel.value})
-          .then(function(){toast("Status updated");}).catch(function(e){toast(e.message,false);});
+        var newStatus=sel.value;
+        var sc=statusClass(newStatus);
+        db.collection("returns").doc(sel.dataset.id).update({status:newStatus})
+          .then(function(){
+            toast("Status updated");
+            // Update badge in same row
+            var badge=sel.closest("tr").querySelector(".badge");
+            if(badge){badge.className="badge s-"+sc;badge.textContent=newStatus;}
+          }).catch(function(e){toast(e.message,false);});
       });
     });
+
+    // View button
+    document.querySelectorAll(".view-rec-btn").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var id=btn.dataset.id;
+        db.collection("returns").doc(id).get().then(function(snap){
+          if(snap.exists) openDetail(Object.assign({id:snap.id},snap.data()));
+          else toast("Record not found",false);
+        }).catch(function(e){toast(e.message,false);});
+      });
+    });
+
+    // Delete
     document.querySelectorAll(".del-rec-btn").forEach(function(btn){
       btn.addEventListener("click",function(){
         var id=btn.dataset.id;
         confirm2("Delete record","Permanently delete return "+id+"? This cannot be undone.",function(){
           db.collection("returns").doc(id).delete()
-            .then(function(){toast("Record deleted"); initRecords();}).catch(function(e){toast(e.message,false);});
+            .then(function(){toast("Record deleted");initRecords();})
+            .catch(function(e){toast(e.message,false);});
         });
       });
     });
@@ -583,13 +693,81 @@ function initRecords(){
 g("btn-refresh").addEventListener("click",initRecords);
 
 // ═══════════════════════════════════════════
+// RECORD DETAIL MODAL
+// ═══════════════════════════════════════════
+function openDetail(rec){
+  activeRecord=rec;
+  g("detail-ref").textContent=(rec.ref||rec.id);
+  g("detail-meta").textContent=(rec.selectedDate||fmtDateFromTs(rec.date))+" · "+(rec.status||"");
+  var body=g("detail-body"); body.innerHTML="";
+
+  // Render each section from stored fields
+  cfg.sections.forEach(function(sec){
+    if(sec.isItemsSection){
+      if(!rec.items||!rec.items.length)return;
+      var secDiv=document.createElement("div");secDiv.className="detail-sec";
+      var title=document.createElement("div");title.className="detail-sec-title";title.textContent=sec.title;
+      secDiv.appendChild(title);
+      var tbl=document.createElement("table");tbl.className="detail-items-tbl";
+      tbl.innerHTML='<thead><tr><th>Product</th><th>SKU</th><th>Qty</th></tr></thead>';
+      var tbody=document.createElement("tbody");
+      rec.items.forEach(function(it){
+        var tr=document.createElement("tr");
+        tr.innerHTML='<td>'+esc(it.name)+'</td><td>'+esc(it.sku||"-")+'</td><td>'+esc(it.qty)+'</td>';
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody);secDiv.appendChild(tbl);body.appendChild(secDiv);return;
+    }
+    // Check if this section has any stored data
+    var hasData=sec.fields.some(function(f){return rec.fields&&rec.fields[f.id]&&rec.fields[f.id].value;});
+    if(!hasData&&!sec.visible)return;
+    var secDiv=document.createElement("div");secDiv.className="detail-sec";
+    var title=document.createElement("div");title.className="detail-sec-title";title.textContent=sec.title;
+    secDiv.appendChild(title);
+    sec.fields.forEach(function(f){
+      var stored=rec.fields&&rec.fields[f.id];
+      var val=stored?stored.value:"";
+      var lbl=stored?stored.label:f.label;
+      if(!val)return;
+      var row=document.createElement("div");row.className="detail-row";
+      var l=document.createElement("span");l.className="detail-lbl";l.textContent=lbl+":";
+      var v=document.createElement("span");v.className="detail-val";v.textContent=val;
+      row.appendChild(l);row.appendChild(v);secDiv.appendChild(row);
+    });
+    if(secDiv.children.length>1) body.appendChild(secDiv);
+  });
+
+  // If fields don't match current cfg (old record), show raw fields
+  if(!body.children.length&&rec.fields){
+    var secDiv=document.createElement("div");secDiv.className="detail-sec";
+    var title=document.createElement("div");title.className="detail-sec-title";title.textContent="Return details";
+    secDiv.appendChild(title);
+    Object.keys(rec.fields).forEach(function(k){
+      var fd=rec.fields[k];if(!fd.value)return;
+      var row=document.createElement("div");row.className="detail-row";
+      var l=document.createElement("span");l.className="detail-lbl";l.textContent=(fd.label||k)+":";
+      var v=document.createElement("span");v.className="detail-val";v.textContent=fd.value;
+      row.appendChild(l);row.appendChild(v);secDiv.appendChild(row);
+    });
+    body.appendChild(secDiv);
+  }
+
+  g("detail-bg").classList.add("open");
+}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+g("detail-close").addEventListener("click",function(){g("detail-bg").classList.remove("open");activeRecord=null;});
+g("detail-bg").addEventListener("click",function(e){if(e.target===g("detail-bg")){g("detail-bg").classList.remove("open");activeRecord=null;}});
+g("detail-btn-company").addEventListener("click",function(){if(activeRecord)exportPDF(activeRecord,"company",cfg.sections);});
+g("detail-btn-custslip").addEventListener("click",function(){if(activeRecord)exportPDF(activeRecord,"customer",cfg.sections);});
+
+// ═══════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════
 document.querySelectorAll(".atab").forEach(function(tab){
   tab.addEventListener("click",function(){
     document.querySelectorAll(".atab").forEach(function(t){t.classList.remove("active");});
     document.querySelectorAll(".atab-panel").forEach(function(p){p.classList.remove("active");});
-    tab.classList.add("active"); g("tab-"+tab.dataset.tab).classList.add("active");
+    tab.classList.add("active");g("tab-"+tab.dataset.tab).classList.add("active");
   });
 });
 function initAdmin(){
@@ -597,319 +775,279 @@ function initAdmin(){
   g("pw-staff-new").value=cfg.fbPassStaff||HC_STAFF;
   g("pw-admin-new").value=cfg.fbPassAdmin||HC_ADMIN;
 }
-
-// ── UP/DOWN BUTTON REORDERING ───────────────
-// Simple, reliable: no drag API involved at all.
-
-function moveSection(si, dir){
-  var ni=si+dir;
-  if(ni<0||ni>=cfg.sections.length)return;
-  var tmp=cfg.sections[si]; cfg.sections[si]=cfg.sections[ni]; cfg.sections[ni]=tmp;
-  saveConfig(function(){renderAdminSections(); buildFormSections(); toast("Section moved");});
+function moveSection(si,dir){
+  var ni=si+dir;if(ni<0||ni>=cfg.sections.length)return;
+  var tmp=cfg.sections[si];cfg.sections[si]=cfg.sections[ni];cfg.sections[ni]=tmp;
+  saveConfig(function(){renderAdminSections();buildFormSections();toast("Section moved");});
 }
-
-function moveField(sec, fi, dir){
-  var ni=fi+dir;
-  if(ni<0||ni>=sec.fields.length)return;
-  var tmp=sec.fields[fi]; sec.fields[fi]=sec.fields[ni]; sec.fields[ni]=tmp;
-  saveConfig(function(){renderAdminSections(); buildFormSections(); toast("Field moved");});
+function moveField(sec,fi,dir){
+  var ni=fi+dir;if(ni<0||ni>=sec.fields.length)return;
+  var tmp=sec.fields[fi];sec.fields[fi]=sec.fields[ni];sec.fields[ni]=tmp;
+  saveConfig(function(){renderAdminSections();buildFormSections();toast("Field moved");});
 }
-
 function renderAdminSections(){
-  var list=g("admin-sections-list"); list.innerHTML="";
-  cfg.sections.forEach(function(sec,si){ list.appendChild(buildAdminSecEl(sec,si)); });
+  var list=g("admin-sections-list");list.innerHTML="";
+  cfg.sections.forEach(function(sec,si){list.appendChild(buildAdminSecEl(sec,si));});
 }
-
 function buildAdminSecEl(sec,si){
-  var el=document.createElement("div"); el.className="asec";
-
-  // HEAD
-  var head=document.createElement("div"); head.className="asec-head";
-
-  // Up/Down buttons for section
-  var orderBtns=document.createElement("div"); orderBtns.className="order-btns";
-  var upBtn=document.createElement("button"); upBtn.className="order-btn"; upBtn.innerHTML="&#9650;"; upBtn.title="Move section up";
-  upBtn.disabled=(si===0);
+  var el=document.createElement("div");el.className="asec";
+  var head=document.createElement("div");head.className="asec-head";
+  var orderBtns=document.createElement("div");orderBtns.className="order-btns";
+  var upBtn=document.createElement("button");upBtn.className="order-btn";upBtn.innerHTML="&#9650;";upBtn.title="Move up";upBtn.disabled=(si===0);
   upBtn.addEventListener("click",function(){moveSection(si,-1);});
-  var dnBtn=document.createElement("button"); dnBtn.className="order-btn"; dnBtn.innerHTML="&#9660;"; dnBtn.title="Move section down";
-  dnBtn.disabled=(si===cfg.sections.length-1);
+  var dnBtn=document.createElement("button");dnBtn.className="order-btn";dnBtn.innerHTML="&#9660;";dnBtn.title="Move down";dnBtn.disabled=(si===cfg.sections.length-1);
   dnBtn.addEventListener("click",function(){moveSection(si,1);});
-  orderBtns.appendChild(upBtn); orderBtns.appendChild(dnBtn);
-
-  var titleWrap=document.createElement("div"); titleWrap.className="asec-title-wrap";
-  var titleInp=document.createElement("input"); titleInp.className="asec-title-input"; titleInp.value=sec.title;
-  titleInp.addEventListener("blur",function(){
-    sec.title=titleInp.value.trim()||sec.title;
-    saveConfig(function(){toast("Section renamed"); buildFormSections();});
-  });
+  orderBtns.appendChild(upBtn);orderBtns.appendChild(dnBtn);
+  var titleWrap=document.createElement("div");titleWrap.className="asec-title-wrap";
+  var titleInp=document.createElement("input");titleInp.className="asec-title-input";titleInp.value=sec.title;
+  titleInp.addEventListener("blur",function(){sec.title=titleInp.value.trim()||sec.title;saveConfig(function(){toast("Renamed");buildFormSections();});});
   titleInp.addEventListener("keydown",function(e){if(e.key==="Enter")titleInp.blur();});
   titleWrap.appendChild(titleInp);
-
-  var controls=document.createElement("div"); controls.className="asec-controls";
-  var visBtn=document.createElement("button"); visBtn.className="vis-toggle"+(sec.visible?" on":"");
-  visBtn.textContent=sec.visible?"Visible":"Hidden";
+  var controls=document.createElement("div");controls.className="asec-controls";
+  var visBtn=document.createElement("button");visBtn.className="vis-toggle"+(sec.visible?" on":"");visBtn.textContent=sec.visible?"Visible":"Hidden";
   visBtn.addEventListener("click",function(){
-    sec.visible=!sec.visible; visBtn.className="vis-toggle"+(sec.visible?" on":"");
-    visBtn.textContent=sec.visible?"Visible":"Hidden";
-    saveConfig(function(){toast("Section "+(sec.visible?"shown":"hidden")); buildFormSections();});
+    sec.visible=!sec.visible;visBtn.className="vis-toggle"+(sec.visible?" on":"");visBtn.textContent=sec.visible?"Visible":"Hidden";
+    saveConfig(function(){toast("Section "+(sec.visible?"shown":"hidden"));buildFormSections();});
   });
-  var delBtn=document.createElement("button"); delBtn.className="btn btn-danger btn-sm"; delBtn.textContent="Delete";
+  var delBtn=document.createElement("button");delBtn.className="btn btn-danger btn-sm";delBtn.textContent="Delete";
   delBtn.addEventListener("click",function(){
     confirm2("Delete section","Delete \""+sec.title+"\" and all its fields?",function(){
-      cfg.sections.splice(si,1);
-      saveConfig(function(){renderAdminSections(); buildFormSections(); toast("Deleted");});
+      cfg.sections.splice(si,1);saveConfig(function(){renderAdminSections();buildFormSections();toast("Deleted");});
     });
   });
-  controls.appendChild(visBtn); controls.appendChild(delBtn);
-  head.appendChild(orderBtns); head.appendChild(titleWrap); head.appendChild(controls);
+  controls.appendChild(visBtn);controls.appendChild(delBtn);
+  head.appendChild(orderBtns);head.appendChild(titleWrap);head.appendChild(controls);
   el.appendChild(head);
-
-  // BODY
-  var body=document.createElement("div"); body.className="asec-body";
-
+  var body=document.createElement("div");body.className="asec-body";
   if(sec.isItemsSection){
-    var info=document.createElement("p"); info.style.cssText="font-size:12px;color:#888;margin-bottom:10px";
-    info.textContent="Manage the product dropdown options for the items table:";
+    var info=document.createElement("p");info.style.cssText="font-size:12px;color:#888;margin-bottom:10px";info.textContent="Manage product dropdown options:";
     body.appendChild(info);
-    var pl=document.createElement("p"); pl.style.cssText="font-size:12px;font-weight:600;color:#555;margin-bottom:6px";
-    pl.textContent="Product options"; body.appendChild(pl);
-    var optList=document.createElement("div"); optList.style.cssText="display:flex;flex-direction:column;gap:5px;margin-bottom:8px";
+    var optList=document.createElement("div");optList.style.cssText="display:flex;flex-direction:column;gap:5px;margin-bottom:8px";
     function renderProdOpts(){
       optList.innerHTML="";
       (sec.itemProducts||[]).forEach(function(p,pi){
-        var row2=document.createElement("div"); row2.style.cssText="display:flex;align-items:center;gap:6px";
-        var inp2=document.createElement("input"); inp2.className="aopt-inp"; inp2.value=p;
-        inp2.addEventListener("change",function(){sec.itemProducts[pi]=inp2.value.trim()||p; saveConfig(function(){toast("Saved"); buildFormSections();});});
-        inp2.addEventListener("keydown",function(e){if(e.key==="Enter")inp2.blur();});
-        var d2=document.createElement("button"); d2.className="btn btn-danger btn-sm"; d2.textContent="Remove";
-        d2.addEventListener("click",function(){sec.itemProducts.splice(pi,1); saveConfig(function(){renderProdOpts(); buildFormSections(); toast("Removed");});});
-        row2.appendChild(inp2); row2.appendChild(d2); optList.appendChild(row2);
+        var r2=document.createElement("div");r2.style.cssText="display:flex;align-items:center;gap:6px";
+        var i2=document.createElement("input");i2.className="aopt-inp";i2.value=p;
+        i2.addEventListener("change",function(){sec.itemProducts[pi]=i2.value.trim()||p;saveConfig(function(){toast("Saved");buildFormSections();});});
+        i2.addEventListener("keydown",function(e){if(e.key==="Enter")i2.blur();});
+        var d2=document.createElement("button");d2.className="btn btn-danger btn-sm";d2.textContent="Remove";
+        d2.addEventListener("click",function(){sec.itemProducts.splice(pi,1);saveConfig(function(){renderProdOpts();buildFormSections();toast("Removed");});});
+        r2.appendChild(i2);r2.appendChild(d2);optList.appendChild(r2);
       });
     }
-    renderProdOpts(); body.appendChild(optList);
-    var aPR=document.createElement("div"); aPR.style.cssText="display:flex;gap:6px";
-    var nPI=document.createElement("input"); nPI.placeholder="Add product..."; nPI.style.cssText="flex:1;padding:6px 10px;border:1px dashed #aaa;border-radius:6px;font-size:13px;font-family:inherit;outline:none";
-    var aPB=document.createElement("button"); aPB.className="btn btn-ghost btn-sm"; aPB.textContent="+ Add";
-    aPB.addEventListener("click",function(){
-      var v=nPI.value.trim(); if(!v)return;
-      if(!sec.itemProducts)sec.itemProducts=[];
-      sec.itemProducts.push(v); nPI.value="";
-      saveConfig(function(){renderProdOpts(); buildFormSections(); toast("Product added");});
-    });
+    renderProdOpts();body.appendChild(optList);
+    var aPR=document.createElement("div");aPR.style.cssText="display:flex;gap:6px";
+    var nPI=document.createElement("input");nPI.placeholder="Add product...";nPI.style.cssText="flex:1;padding:6px 10px;border:1px dashed #aaa;border-radius:6px;font-size:13px;font-family:inherit;outline:none";
+    var aPB=document.createElement("button");aPB.className="btn btn-ghost btn-sm";aPB.textContent="+ Add";
+    aPB.addEventListener("click",function(){var v=nPI.value.trim();if(!v)return;if(!sec.itemProducts)sec.itemProducts=[];sec.itemProducts.push(v);nPI.value="";saveConfig(function(){renderProdOpts();buildFormSections();toast("Added");});});
     nPI.addEventListener("keydown",function(e){if(e.key==="Enter")aPB.click();});
-    aPR.appendChild(nPI); aPR.appendChild(aPB); body.appendChild(aPR);
-    el.appendChild(body); return el;
+    aPR.appendChild(nPI);aPR.appendChild(aPB);body.appendChild(aPR);
+    el.appendChild(body);return el;
   }
-
-  // FIELD LIST
-  var fieldList=document.createElement("div"); fieldList.className="afield-list";
-  sec.fields.forEach(function(f,fi){ fieldList.appendChild(buildAdminField(sec,si,f,fi)); });
+  var fieldList=document.createElement("div");fieldList.className="afield-list";
+  sec.fields.forEach(function(f,fi){fieldList.appendChild(buildAdminField(sec,si,f,fi));});
   body.appendChild(fieldList);
-
-  var addFieldRow=document.createElement("div"); addFieldRow.className="add-field-row";
+  var addFieldRow=document.createElement("div");addFieldRow.className="add-field-row";
   ["text","textarea","dropdown"].forEach(function(type){
-    var b=document.createElement("button"); b.className="btn btn-ghost btn-sm";
+    var b=document.createElement("button");b.className="btn btn-ghost btn-sm";
     b.textContent="+ "+(type.charAt(0).toUpperCase()+type.slice(1))+" field";
     b.addEventListener("click",function(){
-      var nf={id:genId(),label:"New "+type+" field",type:type};
-      if(type==="dropdown") nf.options=["Option 1","Option 2"];
-      sec.fields.push(nf);
-      saveConfig(function(){renderAdminSections(); buildFormSections(); toast("Field added");});
+      var nf={id:genId(),label:"New "+type+" field",type:type};if(type==="dropdown")nf.options=["Option 1","Option 2"];
+      sec.fields.push(nf);saveConfig(function(){renderAdminSections();buildFormSections();toast("Field added");});
     });
     addFieldRow.appendChild(b);
   });
-  body.appendChild(addFieldRow); el.appendChild(body); return el;
+  body.appendChild(addFieldRow);el.appendChild(body);return el;
 }
-
 function buildAdminField(sec,si,f,fi){
-  var wrap=document.createElement("div"); wrap.className="afield-wrap";
-  var row=document.createElement("div"); row.className="afield-row";
-
-  // Up/Down buttons for field
-  var fOrderBtns=document.createElement("div"); fOrderBtns.className="field-order-btns";
-  var fUp=document.createElement("button"); fUp.className="order-btn"; fUp.innerHTML="&#9650;"; fUp.title="Move field up";
-  fUp.disabled=(fi===0);
+  var wrap=document.createElement("div");wrap.className="afield-wrap";
+  var row=document.createElement("div");row.className="afield-row";
+  var fOB=document.createElement("div");fOB.className="field-order-btns";
+  var fUp=document.createElement("button");fUp.className="order-btn";fUp.innerHTML="&#9650;";fUp.title="Move up";fUp.disabled=(fi===0);
   fUp.addEventListener("click",function(){moveField(sec,fi,-1);});
-  var fDn=document.createElement("button"); fDn.className="order-btn"; fDn.innerHTML="&#9660;"; fDn.title="Move field down";
-  fDn.disabled=(fi===sec.fields.length-1);
+  var fDn=document.createElement("button");fDn.className="order-btn";fDn.innerHTML="&#9660;";fDn.title="Move down";fDn.disabled=(fi===sec.fields.length-1);
   fDn.addEventListener("click",function(){moveField(sec,fi,1);});
-  fOrderBtns.appendChild(fUp); fOrderBtns.appendChild(fDn);
-
-  var labelInp=document.createElement("input"); labelInp.className="afield-label-inp"; labelInp.value=f.label;
-  labelInp.addEventListener("blur",function(){
-    f.label=labelInp.value.trim()||f.label;
-    saveConfig(function(){toast("Saved"); buildFormSections();});
-  });
+  fOB.appendChild(fUp);fOB.appendChild(fDn);
+  var labelInp=document.createElement("input");labelInp.className="afield-label-inp";labelInp.value=f.label;
+  labelInp.addEventListener("blur",function(){f.label=labelInp.value.trim()||f.label;saveConfig(function(){toast("Saved");buildFormSections();});});
   labelInp.addEventListener("keydown",function(e){if(e.key==="Enter")labelInp.blur();});
-
-  var badge=document.createElement("span"); badge.className="atype-badge type-"+f.type; badge.textContent=f.type;
-  var del=document.createElement("button"); del.className="btn btn-danger btn-sm"; del.textContent="×";
-  del.addEventListener("click",function(){
-    sec.fields.splice(fi,1);
-    saveConfig(function(){renderAdminSections(); buildFormSections(); toast("Field removed");});
-  });
-  row.appendChild(fOrderBtns); row.appendChild(labelInp); row.appendChild(badge); row.appendChild(del);
+  var badge=document.createElement("span");badge.className="atype-badge type-"+f.type;badge.textContent=f.type;
+  var del=document.createElement("button");del.className="btn btn-danger btn-sm";del.textContent="×";
+  del.addEventListener("click",function(){sec.fields.splice(fi,1);saveConfig(function(){renderAdminSections();buildFormSections();toast("Removed");});});
+  row.appendChild(fOB);row.appendChild(labelInp);row.appendChild(badge);row.appendChild(del);
   wrap.appendChild(row);
-
   if(f.type==="dropdown"){
-    var optsArea=document.createElement("div"); optsArea.className="afield-opts";
+    var optsArea=document.createElement("div");optsArea.className="afield-opts";
     function renderOpts(){
       optsArea.innerHTML="";
       (f.options||[]).forEach(function(opt,oi){
-        var or=document.createElement("div"); or.className="aopt-row";
-        var inp=document.createElement("input"); inp.className="aopt-inp"; inp.value=opt;
-        inp.addEventListener("change",function(){f.options[oi]=inp.value.trim()||opt; saveConfig(function(){toast("Saved"); buildFormSections();});});
+        var or=document.createElement("div");or.className="aopt-row";
+        var inp=document.createElement("input");inp.className="aopt-inp";inp.value=opt;
+        inp.addEventListener("change",function(){f.options[oi]=inp.value.trim()||opt;saveConfig(function(){toast("Saved");buildFormSections();});});
         inp.addEventListener("keydown",function(e){if(e.key==="Enter")inp.blur();});
-        var d=document.createElement("button"); d.className="btn btn-danger btn-sm"; d.textContent="×";
-        d.addEventListener("click",function(){f.options.splice(oi,1); saveConfig(function(){renderAdminSections(); buildFormSections(); toast("Removed");});});
-        or.appendChild(inp); or.appendChild(d); optsArea.appendChild(or);
+        var d=document.createElement("button");d.className="btn btn-danger btn-sm";d.textContent="×";
+        d.addEventListener("click",function(){f.options.splice(oi,1);saveConfig(function(){renderAdminSections();buildFormSections();toast("Removed");});});
+        or.appendChild(inp);or.appendChild(d);optsArea.appendChild(or);
       });
-      var ar=document.createElement("div"); ar.style.cssText="display:flex;gap:6px;margin-top:6px";
-      var ni=document.createElement("input"); ni.placeholder="Add option..."; ni.style.cssText="flex:1;padding:5px 8px;border:1px dashed #aaa;border-radius:4px;font-size:12px;font-family:inherit;outline:none";
-      var ab=document.createElement("button"); ab.className="btn btn-ghost btn-sm"; ab.textContent="+ Add";
-      ab.addEventListener("click",function(){
-        var v=ni.value.trim(); if(!v)return;
-        if(!f.options)f.options=[];
-        f.options.push(v); ni.value="";
-        saveConfig(function(){renderAdminSections(); buildFormSections(); toast("Added");});
-      });
+      var ar=document.createElement("div");ar.style.cssText="display:flex;gap:6px;margin-top:6px";
+      var ni=document.createElement("input");ni.placeholder="Add option...";ni.style.cssText="flex:1;padding:5px 8px;border:1px dashed #aaa;border-radius:4px;font-size:12px;font-family:inherit;outline:none";
+      var ab=document.createElement("button");ab.className="btn btn-ghost btn-sm";ab.textContent="+ Add";
+      ab.addEventListener("click",function(){var v=ni.value.trim();if(!v)return;if(!f.options)f.options=[];f.options.push(v);ni.value="";saveConfig(function(){renderAdminSections();buildFormSections();toast("Added");});});
       ni.addEventListener("keydown",function(e){if(e.key==="Enter")ab.click();});
-      ar.appendChild(ni); ar.appendChild(ab); optsArea.appendChild(ar);
+      ar.appendChild(ni);ar.appendChild(ab);optsArea.appendChild(ar);
     }
-    renderOpts(); wrap.appendChild(optsArea);
+    renderOpts();wrap.appendChild(optsArea);
   }
   return wrap;
 }
-
-// ADD SECTION
 g("btn-add-sec").addEventListener("click",function(){
-  var t=g("new-sec-title").value.trim(); if(!t)return;
+  var t=g("new-sec-title").value.trim();if(!t)return;
   cfg.sections.push({id:genId(),title:t,visible:true,fields:[]});
   g("new-sec-title").value="";
-  saveConfig(function(){renderAdminSections(); buildFormSections(); toast("Section added");});
+  saveConfig(function(){renderAdminSections();buildFormSections();toast("Section added");});
 });
 g("new-sec-title").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-add-sec").click();});
-
-// PASSWORDS
 g("btn-save-pw").addEventListener("click",function(){
-  var s=g("pw-staff-new").value.trim(), a=g("pw-admin-new").value.trim();
+  var s=g("pw-staff-new").value.trim(),a=g("pw-admin-new").value.trim();
   if(!s||!a){toast("Both passwords required",false);return;}
-  cfg.fbPassStaff=s; cfg.fbPassAdmin=a;
-  saveConfig(function(){toast("Passwords saved — hardcoded passwords still work as backup");});
+  cfg.fbPassStaff=s;cfg.fbPassAdmin=a;
+  saveConfig(function(){toast("Passwords saved");});
 });
 
 // ═══════════════════════════════════════════
-// PDF EXPORT
+// PDF EXPORT — works from any record object
 // ═══════════════════════════════════════════
-function exportDoc(type){
-  var items=getItems();
-  if(!items.length){toast("Please add at least one item",false);return;}
+function exportPDF(rec, type, sections){
+  var recDate=rec.selectedDate||fmtDateFromTs(rec.date)||"";
+  var recRef=rec.ref||rec.id||"";
+  var items=rec.items||[];
+  if(!items.length&&type!=="customer"){/* allow empty for customer slip preview */}
+
   var jsPDF=window.jspdf.jsPDF;
   var doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
   var W=210,m=16,cw=W-m*2;
-  var logoImg=new Image(); logoImg.src=LOGO;
+  var logoImg=new Image();logoImg.src=LOGO;
+
   function pSH(y,lbl){
-    doc.setFillColor(240,240,240); doc.rect(m,y,cw,7,"F");
-    doc.setTextColor(100,100,100); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
-    doc.text(lbl.toUpperCase(),m+3,y+5); doc.setTextColor(17,17,17); return y+11;
+    doc.setFillColor(240,240,240);doc.rect(m,y,cw,7,"F");
+    doc.setTextColor(100,100,100);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
+    doc.text(lbl.toUpperCase(),m+3,y+5);doc.setTextColor(17,17,17);return y+11;
   }
   function pRW(y,l1,v1,l2,v2){
     var hw=cw/2-3;
-    doc.setFontSize(8); doc.setFont("helvetica","normal");
-    doc.setTextColor(100,100,100); doc.text(l1,m,y);
-    doc.setTextColor(17,17,17); doc.text(String(v1||"-"),m+42,y);
-    if(l2!==undefined){doc.setTextColor(100,100,100); doc.text(l2,m+hw+4,y); doc.setTextColor(17,17,17); doc.text(String(v2||"-"),m+hw+44,y);}
+    doc.setFontSize(8);doc.setFont("helvetica","normal");
+    doc.setTextColor(100,100,100);doc.text(l1,m,y);
+    doc.setTextColor(17,17,17);doc.text(String(v1||"-"),m+42,y);
+    if(l2!==undefined){doc.setTextColor(100,100,100);doc.text(l2,m+hw+4,y);doc.setTextColor(17,17,17);doc.text(String(v2||"-"),m+hw+44,y);}
     return y+6;
   }
+  function getRecVal(fieldId){
+    if(rec.fields&&rec.fields[fieldId]) return rec.fields[fieldId].value||"";
+    return "";
+  }
+  function getRecLabel(fieldId,fallback){
+    if(rec.fields&&rec.fields[fieldId]) return rec.fields[fieldId].label||fallback;
+    return fallback;
+  }
+
   if(type==="company"){
-    doc.setFillColor(17,17,17); doc.rect(0,0,W,28,"F");
+    doc.setFillColor(17,17,17);doc.rect(0,0,W,28,"F");
     try{doc.addImage(logoImg,"PNG",m,6,48,16);}catch(e){}
     doc.setTextColor(255,255,255);
-    doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.text("INTERNAL - RETURN AUTHORISATION",W-m,10,{align:"right"});
-    doc.setFontSize(10); doc.setFont("helvetica","bold"); doc.text(refNum,W-m,18,{align:"right"});
-    doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.text(today,W-m,24,{align:"right"});
+    doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text("INTERNAL - RETURN AUTHORISATION",W-m,10,{align:"right"});
+    doc.setFontSize(10);doc.setFont("helvetica","bold");doc.text(recRef,W-m,18,{align:"right"});
+    doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text(recDate,W-m,24,{align:"right"});
     var y=36;
-    cfg.sections.forEach(function(sec){
-      if(!sec.visible)return;
+    sections.forEach(function(sec){
       if(sec.isItemsSection){
+        if(!items.length)return;
         y=pSH(y,"Items to be returned");
         var cw2=[cw*.5,cw*.25,cw*.25];
-        doc.setFillColor(17,17,17); doc.rect(m,y,cw,7,"F");
-        doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
-        var cx=m+2; ["Product","SKU","Qty"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];}); y+=7;
+        doc.setFillColor(17,17,17);doc.rect(m,y,cw,7,"F");
+        doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
+        var cx=m+2;["Product","SKU","Qty"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];});y+=7;
         items.forEach(function(it,idx){
-          doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255); doc.rect(m,y,cw,6.5,"F");
-          doc.setTextColor(17,17,17); doc.setFontSize(8); doc.setFont("helvetica","normal"); cx=m+2;
-          [it.name,it.sku||"-",it.qty].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];}); y+=6.5;
-        }); y+=8; return;
+          doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);doc.rect(m,y,cw,6.5,"F");
+          doc.setTextColor(17,17,17);doc.setFontSize(8);doc.setFont("helvetica","normal");cx=m+2;
+          [it.name,it.sku||"-",it.qty].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});y+=6.5;
+        });y+=8;return;
       }
-      y=pSH(y,sec.title); var i=0,fields=sec.fields;
-      while(i<fields.length){
-        var f=fields[i],v=getFieldValue(f);
+      var secFields=sec.fields.filter(function(f){return getRecVal(f.id);});
+      if(!secFields.length)return;
+      y=pSH(y,sec.title);
+      var i=0;
+      while(i<sec.fields.length){
+        var f=sec.fields[i];var v=getRecVal(f.id);var lbl=getRecLabel(f.id,f.label);
+        if(!v){i++;continue;}
         if(f.type==="textarea"){
-          doc.setFontSize(8); doc.setFont("helvetica","normal");
-          doc.setTextColor(100,100,100); doc.text(f.label+":",m,y); doc.setTextColor(17,17,17);
-          var lines=doc.splitTextToSize(v||"-",cw-44); doc.text(lines,m+44,y); y+=lines.length*5+2; i++;
+          doc.setFontSize(8);doc.setFont("helvetica","normal");
+          doc.setTextColor(100,100,100);doc.text(lbl+":",m,y);doc.setTextColor(17,17,17);
+          var lines=doc.splitTextToSize(v,cw-44);doc.text(lines,m+44,y);y+=lines.length*5+2;i++;
         } else {
-          var nx=fields[i+1];
-          if(nx&&nx.type!=="textarea"){y=pRW(y,f.label+":",v,nx.label+":",getFieldValue(nx));i+=2;}
-          else{y=pRW(y,f.label+":",v);i++;}
+          var nx=sec.fields[i+1];var nxv=nx?getRecVal(nx.id):"";
+          if(nx&&nx.type!=="textarea"&&nxv){y=pRW(y,lbl+":",v,getRecLabel(nx.id,nx.label)+":",nxv);i+=2;}
+          else{y=pRW(y,lbl+":",v);i++;}
         }
       }
       y+=4;
     });
-    y=pSH(y,"Authorisation"); y+=6;
-    doc.setDrawColor(200,200,200); doc.line(m,y+10,m+74,y+10); doc.line(m+88,y+10,m+162,y+10);
-    doc.setFontSize(7.5); doc.setTextColor(140,140,140); doc.text("Authorised signature",m,y+14); doc.text("Date",m+88,y+14);
-    doc.setFontSize(7); doc.setTextColor(160,160,160);
-    doc.text("Driventic UK Limited - Internal use only - "+refNum,m,288); doc.text(today,W-m,288,{align:"right"});
-    doc.save("Driventic-Company-"+refNum+".pdf"); toast("Company copy downloaded");
+    y=pSH(y,"Authorisation");y+=6;
+    doc.setDrawColor(200,200,200);doc.line(m,y+10,m+74,y+10);doc.line(m+88,y+10,m+162,y+10);
+    doc.setFontSize(7.5);doc.setTextColor(140,140,140);doc.text("Authorised signature",m,y+14);doc.text("Date",m+88,y+14);
+    doc.setFontSize(7);doc.setTextColor(160,160,160);
+    doc.text("Driventic UK Limited - Internal use only - "+recRef,m,288);doc.text(recDate,W-m,288,{align:"right"});
+    doc.save("Driventic-Company-"+recRef+".pdf");toast("Company copy downloaded");
+
   } else {
-    doc.setFillColor(17,17,17); doc.rect(0,0,W,30,"F");
+    doc.setFillColor(17,17,17);doc.rect(0,0,W,30,"F");
     try{doc.addImage(logoImg,"PNG",m,7,44,15);}catch(e){}
-    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","normal");
+    doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont("helvetica","normal");
     doc.text("RETURNS PACKING SLIP",W-m,11,{align:"right"});
-    doc.setFontSize(11); doc.setFont("helvetica","bold"); doc.text(refNum,W-m,20,{align:"right"});
-    doc.setFontSize(7.5); doc.setFont("helvetica","normal"); doc.text(today,W-m,27,{align:"right"});
+    doc.setFontSize(11);doc.setFont("helvetica","bold");doc.text(recRef,W-m,20,{align:"right"});
+    doc.setFontSize(7.5);doc.setFont("helvetica","normal");doc.text(recDate,W-m,27,{align:"right"});
     var y=38;
-    doc.setFillColor(240,240,240); doc.rect(m,y,cw,26,"F");
-    doc.setTextColor(100,100,100); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
+    doc.setFillColor(240,240,240);doc.rect(m,y,cw,26,"F");
+    doc.setTextColor(100,100,100);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
     doc.text("YOUR RETURN REFERENCE - include this in your shipment",m+4,y+6);
-    doc.setTextColor(17,17,17); doc.setFontSize(20); doc.setFont("helvetica","bold"); doc.text(refNum,m+4,y+19); y+=32;
+    doc.setTextColor(17,17,17);doc.setFontSize(20);doc.setFont("helvetica","bold");doc.text(recRef,m+4,y+19);y+=32;
     function ss(lbl){doc.setFillColor(17,17,17);doc.rect(m,y,cw,7,"F");doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont("helvetica","bold");doc.text(lbl,m+3,y+5);doc.setTextColor(17,17,17);y+=10;}
     function sr(lbl,val){doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);doc.text(lbl,m,y);doc.setTextColor(17,17,17);doc.text(String(val||"-"),m+36,y);y+=5.5;}
     ss("Your details");
-    cfg.sections.forEach(function(sec){
-      if(!sec.visible||sec.isItemsSection)return;
-      sec.fields.filter(function(f){return f.type!=="textarea";}).forEach(function(f){sr(f.label+":",getFieldValue(f));});
+    sections.forEach(function(sec){
+      if(sec.isItemsSection||!sec.visible)return;
+      sec.fields.filter(function(f){return f.type!=="textarea";}).forEach(function(f){
+        var v=getRecVal(f.id);if(!v)return;
+        sr(getRecLabel(f.id,f.label)+":",v);
+      });
     });
-    y+=4; ss("Items in this return");
-    var ic=[cw*.55,cw*.22,cw*.23];
-    doc.setFillColor(17,17,17); doc.rect(m,y,cw,6,"F");
-    doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
-    var cx=m+2; ["Description","SKU","Qty"].forEach(function(h,i){doc.text(h,cx,y+4.2);cx+=ic[i];}); y+=6;
-    items.forEach(function(it,idx){
-      doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255); doc.rect(m,y,cw,6,"F");
-      doc.setTextColor(17,17,17); doc.setFontSize(8); doc.setFont("helvetica","normal"); cx=m+2;
-      [it.name,it.sku||"-",it.qty].forEach(function(v,i){doc.text(String(v),cx,y+4.2);cx+=ic[i];}); y+=6;
-    });
-    y+=8; ss("How to return your items");
+    y+=4;
+    if(items.length){
+      ss("Items in this return");
+      var ic=[cw*.55,cw*.22,cw*.23];
+      doc.setFillColor(17,17,17);doc.rect(m,y,cw,6,"F");
+      doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
+      var cx=m+2;["Description","SKU","Qty"].forEach(function(h,i){doc.text(h,cx,y+4.2);cx+=ic[i];});y+=6;
+      items.forEach(function(it,idx){
+        doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);doc.rect(m,y,cw,6,"F");
+        doc.setTextColor(17,17,17);doc.setFontSize(8);doc.setFont("helvetica","normal");cx=m+2;
+        [it.name,it.sku||"-",it.qty].forEach(function(v,i){doc.text(String(v),cx,y+4.2);cx+=ic[i];});y+=6;
+      });y+=8;
+    }
+    ss("How to return your items");
     ["1.  Pack items securely in appropriate packaging.",
      "2.  Place this slip inside the parcel before sealing.",
      "3.  Attach your returns label to the outside of the box.",
      "4.  Drop off at any authorised carrier location."].forEach(function(s){
-      doc.setFontSize(8.5); doc.setFont("helvetica","normal"); doc.setTextColor(17,17,17); doc.text(s,m+2,y); y+=6.5;
+      doc.setFontSize(8.5);doc.setFont("helvetica","normal");doc.setTextColor(17,17,17);doc.text(s,m+2,y);y+=6.5;
     });
-    y+=6; ss("Return to address");
+    y+=6;ss("Return to address");
     ADDR.forEach(function(line){doc.setFontSize(8.5);doc.setFont("helvetica","normal");doc.setTextColor(17,17,17);doc.text(line,m+2,y);y+=5.5;});
-    y+=8; doc.setFontSize(7.5); doc.setTextColor(100,100,100); doc.text("Questions? Contact us quoting: "+refNum,m,y);
-    doc.setFontSize(7); doc.setTextColor(160,160,160);
-    doc.text("Driventic UK Limited  · CV47 0FT",m,288); doc.text(today,W-m,288,{align:"right"});
-    doc.save("Driventic-CustomerSlip-"+refNum+".pdf"); toast("Customer slip downloaded");
+    y+=8;doc.setFontSize(7.5);doc.setTextColor(100,100,100);doc.text("Questions? Contact us quoting: "+recRef,m,y);
+    doc.setFontSize(7);doc.setTextColor(160,160,160);
+    doc.text("Driventic UK Limited  · CV47 0FT",m,288);doc.text(recDate,W-m,288,{align:"right"});
+    doc.save("Driventic-CustomerSlip-"+recRef+".pdf");toast("Customer slip downloaded");
   }
 }
-g("btn-company").addEventListener("click",  function(){exportDoc("company");});
-g("btn-custslip").addEventListener("click", function(){exportDoc("customer");});
 </script>
 </body>
 </html>
