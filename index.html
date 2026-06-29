@@ -199,10 +199,6 @@ tr:hover td{background:#fafafa}
     <div id="form-sections-container"></div>
     <div class="actions">
       <div class="act-title">Save &amp; export</div>
-      <div class="date-row">
-        <label for="return-date">Return date</label>
-        <input type="date" id="return-date">
-      </div>
       <button class="btn btn-black btn-full" id="btn-submit" style="margin-bottom:10px">Submit &amp; save return</button>
       <div class="export-grid">
         <button class="btn btn-black btn-full" id="btn-company">&#8595; Company copy</button>
@@ -446,16 +442,12 @@ function initForm(){
   refNum=genRef();
   selectedDateRaw=todayInputVal();
   selectedDate=fmtDateLong(selectedDateRaw);
-  g("return-date").value=selectedDateRaw;
   g("ref-display").textContent=refNum;
   g("btn-submit").textContent="Submit & save return";g("btn-submit").disabled=false;
-  buildFormSections();updateProgress();
+  buildFormSections();
+  var rdEl=g("return-date"); if(rdEl) rdEl.value=selectedDateRaw;
+  updateProgress();
 }
-g("return-date").addEventListener("change",function(){
-  selectedDateRaw=g("return-date").value;
-  selectedDate=fmtDateLong(selectedDateRaw)||selectedDate;
-});
-
 function buildFormSections(){
   var c=g("form-sections-container");c.innerHTML="";
   cfg.sections.forEach(function(sec){
@@ -494,6 +486,18 @@ function buildFormSections(){
           var w=document.createElement("div");if(i>0)w.className="mt";w.appendChild(makeFieldEl(f));body.appendChild(w);i++;
         }
       }
+    }
+    // Append return date field to the resolution section
+    if(sec.id==="resolution"){
+      var dateDiv=document.createElement("div");dateDiv.className="field mt";
+      var dateLbl2=document.createElement("label");dateLbl2.textContent="Return date";dateLbl2.setAttribute("for","return-date");
+      var dateInp2=document.createElement("input");dateInp2.type="date";dateInp2.id="return-date";
+      dateInp2.value=selectedDateRaw;
+      dateInp2.addEventListener("change",function(){
+        selectedDateRaw=dateInp2.value;
+        selectedDate=fmtDateLong(selectedDateRaw)||selectedDate;
+      });
+      dateDiv.appendChild(dateLbl2);dateDiv.appendChild(dateInp2);body.appendChild(dateDiv);
     }
     card.appendChild(body);c.appendChild(card);
   });
