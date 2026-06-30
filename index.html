@@ -676,9 +676,12 @@ function findFieldValue(rec,keywords){
   return"";
 }
 function getOperator(rec){
-  var v=findFieldValue(rec,["operator","engineer"]);
+  var v=findFieldValue(rec,["operator"]);
   if(v)return v;
   return(rec.customer&&rec.customer.name)||"";
+}
+function getEngineer(rec){
+  return findFieldValue(rec,["engineer"]);
 }
 function getLocation(rec){
   return findFieldValue(rec,["location","address","site"]);
@@ -768,8 +771,9 @@ g("records-search").addEventListener("input",function(){
   var filtered=allRecordRows.filter(function(r){
     var ref=(r.ref||r.id||"").toLowerCase();
     var operator=getOperator(r).toLowerCase();
+    var engineer=getEngineer(r).toLowerCase();
     var location=getLocation(r).toLowerCase();
-    return ref.indexOf(q)!==-1||operator.indexOf(q)!==-1||location.indexOf(q)!==-1;
+    return ref.indexOf(q)!==-1||operator.indexOf(q)!==-1||engineer.indexOf(q)!==-1||location.indexOf(q)!==-1;
   });
   renderRecordsTable(filtered);
 });
