@@ -213,11 +213,14 @@ tr:hover td{background:#fafafa}
   <div id="page-records" class="page" style="display:none">
     <div class="rec-toolbar">
       <h2>Return Records</h2>
-      <button class="btn btn-ghost" id="btn-refresh">>&#8635; Refresh<#8635; Refresh</button>
+      <button class="btn btn-ghost" id="btn-refresh">&#8635; Refresh</button>
+    </div>
+    <div class="field" style="margin-bottom:14px">
+      <input type="text" id="records-search" placeholder="Search by reference, operator, location, or engineer...">
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Reference</th><th>Date</th><th>Customer</th><th>Items</th><th>Status</th><th>Update Status</th><th>View</th><th></th></tr></thead>
+        <thead><tr><th>Reference</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th><th>Update Status</th><th>View</th><th></th></tr></thead>
         <tbody id="records-body"></tbody>
       </table>
     </div>
@@ -658,73 +661,118 @@ function exportFromForm(type){
 // ═══════════════════════════════════════════
 // RECORDS
 // ═══════════════════════════════════════════
+var allRecordRows=[];
+
+function findFieldValue(rec,keywords){
+  if(!rec.fields)return"";
+  var keys=Object.keys(rec.fields);
+  for(var i=0;i<keys.length;i++){
+    var fd=rec.fields[keys[i]];
+    var lbl=(fd&&fd.label||"").toLowerCase();
+    for(var j=0;j<keywords.length;j++){
+      if(lbl.indexOf(keywords[j])!==-1) return fd.value||"";
+    }
+  }
+  return"";
+}
+function getOperator(rec){
+  var v=findFieldValue(rec,["operator","engineer"]);
+  if(v)return v;
+  return(rec.customer&&rec.customer.name)||"";
+}
+function getLocation(rec){
+  return findFieldValue(rec,["location","address","site"]);
+}
+
 function initRecords(){
   if(!db){toast("Connecting...",false);return;}
-  g("records-body").innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:#888">Loading...</td></tr>';
+  g("records-body").innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#888">Loading...</td></tr>';
   db.collection("returns").orderBy("date","desc").get().then(function(snap){
     var rows=[];snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
-    if(!rows.length){
-      g("records-body").innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:#888">No returns yet</td></tr>';return;
-    }
-    g("records-body").innerHTML=rows.map(function(r){
-      var sc=statusClass(r.status);
-      var opts=STATUS_OPTIONS.map(function(s){
-        return'<option'+(s===r.status?" selected":"")+">"+s+"</option>";
-      }).join("");
-      var itemSummary=r.items?r.items.slice(0,2).map(function(i){return i.name;}).join(", ")+(r.items.length>2?" +"+( r.items.length-2)+" more":""):"-";
-      return'<tr>'+
-        '<td><span class="ref-tag">'+(r.ref||r.id)+'</span></td>'+
-        '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
-        '<td>'+(r.customer&&r.customer.name||"-")+'</td>'+
-        '<td style="color:#666;font-size:12px">'+itemSummary+'</td>'+
-        '<td><span class="badge s-'+sc+'">'+(r.status||STATUS_OPTIONS[0])+'</span></td>'+
-        '<td><select class="stat-sel" data-id="'+r.id+'">'+opts+'</select></td>'+
-        '<td><button class="view-rec-btn" data-id="'+r.id+'">View</button></td>'+
-        '<td><button class="del-rec-btn" data-id="'+r.id+'">&times;</button></td>'+
-        '</tr>';
-    }).join("");
-
-    // Status change
-    document.querySelectorAll(".stat-sel").forEach(function(sel){
-      sel.addEventListener("change",function(){
-        var newStatus=sel.value;
-        var sc=statusClass(newStatus);
-        db.collection("returns").doc(sel.dataset.id).update({status:newStatus})
-          .then(function(){
-            toast("Status Updated");
-            // Update badge in same row
-            var badge=sel.closest("tr").querySelector(".badge");
-            if(badge){badge.className="badge s-"+sc;badge.textContent=newStatus;}
-          }).catch(function(e){toast(e.message,false);});
-      });
-    });
-
-    // View button
-    document.querySelectorAll(".view-rec-btn").forEach(function(btn){
-      btn.addEventListener("click",function(){
-        var id=btn.dataset.id;
-        db.collection("returns").doc(id).get().then(function(snap){
-          if(snap.exists) openDetail(Object.assign({id:snap.id},snap.data()));
-          else toast("Record Not Found",false);
-        }).catch(function(e){toast(e.message,false);});
-      });
-    });
-
-    // Delete
-    document.querySelectorAll(".del-rec-btn").forEach(function(btn){
-      btn.addEventListener("click",function(){
-        var id=btn.dataset.id;
-        confirm2("Delete record","Permanently delete return "+id+"? This cannot be undone.",function(){
-          db.collection("returns").doc(id).delete()
-            .then(function(){toast("Record Deleted");initRecords();})
-            .catch(function(e){toast(e.message,false);});
-        });
-      });
-    });
+    allRecordRows=rows;
+    renderRecordsTable(rows);
   }).catch(function(e){
-    g("records-body").innerHTML='<tr><td colspan="8" style="padding:16px;color:#c0392b">Error: '+e.message+'</td></tr>';
+    g("records-body").innerHTML='<tr><td colspan="9" style="padding:16px;color:#c0392b">Error: '+e.message+'</td></tr>';
   });
 }
+
+function renderRecordsTable(rows){
+  if(!rows.length){
+    g("records-body").innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:#888">No returns found</td></tr>';
+    return;
+  }
+  g("records-body").innerHTML=rows.map(function(r){
+    var sc=statusClass(r.status);
+    var opts=STATUS_OPTIONS.map(function(s){
+      return'<option'+(s===r.status?" selected":"")+">"+s+"</option>";
+    }).join("");
+    var itemSummary=r.items?r.items.slice(0,2).map(function(i){return i.name;}).join(", ")+(r.items.length>2?" +"+(r.items.length-2)+" more":""):"-";
+    var operator=getOperator(r)||"-";
+    var location=getLocation(r)||"-";
+    return'<tr>'+
+      '<td><span class="ref-tag">'+(r.ref||r.id)+'</span></td>'+
+      '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
+      '<td>'+esc(operator)+'</td>'+
+      '<td>'+esc(location)+'</td>'+
+      '<td style="color:#666;font-size:12px">'+esc(itemSummary)+'</td>'+
+      '<td><span class="badge s-'+sc+'">'+(r.status||STATUS_OPTIONS[0])+'</span></td>'+
+      '<td><select class="stat-sel" data-id="'+r.id+'">'+opts+'</select></td>'+
+      '<td><button class="view-rec-btn" data-id="'+r.id+'">View</button></td>'+
+      '<td><button class="del-rec-btn" data-id="'+r.id+'">&times;</button></td>'+
+      '</tr>';
+  }).join("");
+
+  // Status change
+  document.querySelectorAll(".stat-sel").forEach(function(sel){
+    sel.addEventListener("change",function(){
+      var newStatus=sel.value;
+      var sc=statusClass(newStatus);
+      db.collection("returns").doc(sel.dataset.id).update({status:newStatus})
+        .then(function(){
+          toast("Status Updated");
+          var badge=sel.closest("tr").querySelector(".badge");
+          if(badge){badge.className="badge s-"+sc;badge.textContent=newStatus;}
+          var rowRec=allRecordRows.find(function(x){return x.id===sel.dataset.id;});
+          if(rowRec)rowRec.status=newStatus;
+        }).catch(function(e){toast(e.message,false);});
+    });
+  });
+
+  // View button
+  document.querySelectorAll(".view-rec-btn").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var id=btn.dataset.id;
+      db.collection("returns").doc(id).get().then(function(snap){
+        if(snap.exists) openDetail(Object.assign({id:snap.id},snap.data()));
+        else toast("Record Not Found",false);
+      }).catch(function(e){toast(e.message,false);});
+    });
+  });
+
+  // Delete
+  document.querySelectorAll(".del-rec-btn").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var id=btn.dataset.id;
+      confirm2("Delete Record","Permanently delete return "+id+"? This cannot be undone.",function(){
+        db.collection("returns").doc(id).delete()
+          .then(function(){toast("Record Deleted");initRecords();})
+          .catch(function(e){toast(e.message,false);});
+      });
+    });
+  });
+}
+
+g("records-search").addEventListener("input",function(){
+  var q=g("records-search").value.trim().toLowerCase();
+  if(!q){renderRecordsTable(allRecordRows);return;}
+  var filtered=allRecordRows.filter(function(r){
+    var ref=(r.ref||r.id||"").toLowerCase();
+    var operator=getOperator(r).toLowerCase();
+    var location=getLocation(r).toLowerCase();
+    return ref.indexOf(q)!==-1||operator.indexOf(q)!==-1||location.indexOf(q)!==-1;
+  });
+  renderRecordsTable(filtered);
+});
 g("btn-refresh").addEventListener("click",initRecords);
 
 // ═══════════════════════════════════════════
