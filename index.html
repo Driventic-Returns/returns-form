@@ -304,6 +304,30 @@ var LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAssAAACQCAMAAADJANb0AA
 var ADDR = ["Driventic UK Limited","Unit 8, Maricott Court","Holywell Business Park","Northfield Road","Southam","Warwickshire","CV47 0FT"];
 var STATUS_OPTIONS = ["Dispatched From Depot","Received At Driventic UK","Dispatched From Driventic UK","Received At Driventic GmbH"];
 
+var DEFAULT_SECTIONS = [
+  {id:"customer",title:"Customer Details",visible:true,fields:[
+    {id:"f-name",  label:"Full Name",        type:"text"},
+    {id:"f-email", label:"Email Address",    type:"text"},
+    {id:"f-phone", label:"Phone Number",     type:"text"},
+    {id:"f-order", label:"Order Number",     type:"text"},
+    {id:"f-addr",  label:"Shipping Address", type:"textarea"}
+  ]},
+  {id:"items",title:"Items Being Returned",visible:true,isItemsSection:true,
+   itemProducts:["Product A","Product B","Product C"],fields:[]},
+  {id:"reason",title:"Reason For Return",visible:true,fields:[
+    {id:"f-reason",label:"Reason",type:"dropdown",
+     options:["Faulty / Defective","Wrong Item Sent","Damaged In Transit","No Longer Needed","Incorrect Size / Fit","Other"]},
+    {id:"f-notes",label:"Additional Notes",type:"textarea"}
+  ]},
+  {id:"resolution",title:"Return Details",visible:true,fields:[
+    {id:"f-resolution",label:"Preferred Resolution",type:"dropdown",
+     options:["Full Refund","Exchange / Replacement","Store Credit","Repair"]},
+    {id:"f-condition",label:"Condition Of Goods",type:"dropdown",
+     options:["Unopened / Sealed","Opened, Unused","Used - Good","Used - Damaged"]},
+    {id:"f-agent",label:"Processed By",type:"text"}
+  ]}
+];
+
 
 var DEFAULT_PDF_CFG = {
   atr: {
