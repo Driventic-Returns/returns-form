@@ -304,50 +304,36 @@ var LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAssAAACQCAMAAADJANb0AA
 var ADDR = ["Driventic UK Limited","Unit 8, Maricott Court","Holywell Business Park","Northfield Road","Southam","Warwickshire","CV47 0FT"];
 var STATUS_OPTIONS = ["Dispatched From Depot","Received At Driventic UK","Dispatched From Driventic UK","Received At Driventic GmbH"];
 
+
 var DEFAULT_PDF_CFG = {
   atr: {
-    formTitle:   "Return Request ATR Form",
-    subtitle:    "Internal — Return Authorisation",
-    footerLeft:  "Driventic UK Limited — Internal Use Only",
-    showAuth:    true,
-    sections:    {}
+    formTitle:  "Return Request ATR Form",
+    subtitle:   "Internal — Return Authorisation",
+    footerLeft: "Driventic UK Limited — Internal Use Only",
+    sections: [
+      {id:"pa1", type:"form-section", secId:"customer",   title:"Customer Details",   visible:true},
+      {id:"pa2", type:"items",                            title:"Items To Be Returned",visible:true},
+      {id:"pa3", type:"form-section", secId:"reason",     title:"Reason For Return",   visible:true},
+      {id:"pa4", type:"form-section", secId:"resolution", title:"Return Details",      visible:true},
+      {id:"pa5", type:"authorisation",                    title:"Authorisation",        visible:true}
+    ]
   },
   rgf: {
     formTitle:        "Returned Goods Form",
     subtitle:         "Returns Packing Slip",
     referenceBoxText: "Your Return Reference — Include This In Your Shipment",
-    showInstructions: true,
-    showAddress:      true,
     footerLeft:       "Driventic UK Limited · CV47 0FT",
-    sections:         {}
+    sections: [
+      {id:"pr1", type:"reference-box",                  title:"Reference Box",         visible:true},
+      {id:"pr2", type:"form-section", secId:"customer", title:"Your Details",          visible:true},
+      {id:"pr3", type:"items",                          title:"Items In This Return",   visible:true},
+      {id:"pr4", type:"form-section", secId:"reason",   title:"Reason For Return",     visible:true},
+      {id:"pr5", type:"instructions",                   title:"How To Return Your Items",visible:true},
+      {id:"pr6", type:"address",                        title:"Return To Address",      visible:true}
+    ]
   }
 };
 
-var DEFAULT_SECTIONS = [
-  {id:"customer",title:"Customer Details",visible:true,fields:[
-    {id:"f-name",  label:"Full Name",        type:"text"},
-    {id:"f-email", label:"Email Address",    type:"text"},
-    {id:"f-phone", label:"Phone Number",     type:"text"},
-    {id:"f-order", label:"Order Number",     type:"text"},
-    {id:"f-addr",  label:"Shipping Address", type:"textarea"}
-  ]},
-  {id:"items",title:"Items Being Returned",visible:true,isItemsSection:true,
-   itemProducts:["Product A","Product B","Product C"],fields:[]},
-  {id:"reason",title:"Reason For Return",visible:true,fields:[
-    {id:"f-reason",label:"Reason",type:"dropdown",
-     options:["Faulty / Defective","Wrong Item Sent","Damaged In Transit","No Longer Needed","Incorrect Size / Fit","Other"]},
-    {id:"f-notes",label:"Additional Notes",type:"textarea"}
-  ]},
-  {id:"resolution",title:"Return Details",visible:true,fields:[
-    {id:"f-resolution",label:"Preferred Resolution",type:"dropdown",
-     options:["Full Refund","Exchange / Replacement","Store Credit","Repair"]},
-    {id:"f-condition",label:"Condition Of Goods",type:"dropdown",
-     options:["Unopened / Sealed","Opened, Unused","Used - Good","Used - Damaged"]},
-    {id:"f-agent",label:"Processed By",type:"text"}
-  ]}
-];
-
-var cfg={sections:JSON.parse(JSON.stringify(DEFAULT_SECTIONS)),fbPassStaff:"",fbPassAdmin:"",pdfCfg:JSON.parse(JSON.stringify(DEFAULT_PDF_CFG))};
 var itemCount=0, refNum="", selectedDate="", selectedDateRaw="";
 var db=null, isAdmin=false, modalCb=null, activeRecord=null;
 
@@ -442,10 +428,14 @@ function loadConfig(cb){
         if(d.sections&&d.sections.length)cfg.sections=d.sections;
         if(d.passwords){cfg.fbPassStaff=d.passwords.staff||"";cfg.fbPassAdmin=d.passwords.admin||"";}
         if(d.pdfCfg){
-          cfg.pdfCfg=Object.assign({},JSON.parse(JSON.stringify(DEFAULT_PDF_CFG)),{
-            atr:Object.assign({},DEFAULT_PDF_CFG.atr,d.pdfCfg.atr||{}),
-            rgf:Object.assign({},DEFAULT_PDF_CFG.rgf,d.pdfCfg.rgf||{})
-          });
+          var dp=d.pdfCfg;
+          cfg.pdfCfg={
+            atr:Object.assign({},DEFAULT_PDF_CFG.atr,dp.atr||{}),
+            rgf:Object.assign({},DEFAULT_PDF_CFG.rgf,dp.rgf||{})
+          };
+          // Preserve sections arrays from Firebase (they override defaults)
+          if(dp.atr&&dp.atr.sections) cfg.pdfCfg.atr.sections=dp.atr.sections;
+          if(dp.rgf&&dp.rgf.sections) cfg.pdfCfg.rgf.sections=dp.rgf.sections;
         }
       }cb();
     }).catch(function(){cb();});
@@ -1042,32 +1032,52 @@ g("btn-reset-cfg").addEventListener("click",function(){
 });
 
 // ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
 // PDF FORMS ADMIN
 // ═══════════════════════════════════════════
+var PDF_TYPE_LABELS = {
+  "form-section":"Form Section","items":"Items Table","authorisation":"Authorisation Block",
+  "reference-box":"Reference Box","instructions":"Return Instructions","address":"Return Address",
+  "custom":"Custom Text"
+};
+var PDF_TYPE_COLOURS = {
+  "form-section":"#EBF5FB;color:#1A5276","items":"#EAFAF1;color:#1E8449",
+  "authorisation":"#FEF9E7;color:#9A6C0A","reference-box":"#F5EEF8;color:#6C3483",
+  "instructions":"#FDEDEC;color:#922B21","address":"#F2F3F4;color:#424949",
+  "custom":"#FFF3E0;color:#E65100"
+};
+function pdfGenId(){return "ps-"+Date.now().toString(36)+Math.random().toString(36).slice(2,4);}
+
 function renderPdfFormsAdmin(){
   var grid=g("pdf-forms-grid"); if(!grid)return;
   grid.innerHTML="";
+  grid.style.gridTemplateColumns="1fr 1fr";
+
   var forms=[
-    {key:"atr", label:"Return Request ATR Form", fields:[
-      {k:"formTitle",   label:"Form Title"},
-      {k:"subtitle",    label:"Header Subtitle"},
-      {k:"footerLeft",  label:"Footer Text"}
-    ], toggles:[
-      {k:"showAuth", label:"Show Authorisation Block"}
-    ]},
-    {key:"rgf", label:"Returned Goods Form", fields:[
-      {k:"formTitle",        label:"Form Title"},
-      {k:"subtitle",         label:"Header Subtitle"},
-      {k:"referenceBoxText", label:"Reference Box Text"},
-      {k:"footerLeft",       label:"Footer Text"}
-    ], toggles:[
-      {k:"showInstructions", label:"Show Return Instructions"},
-      {k:"showAddress",      label:"Show Return Address"}
-    ]}
+    {key:"atr", label:"Return Request ATR Form",
+     extraFields:[
+       {k:"formTitle",  label:"Form Title"},
+       {k:"subtitle",   label:"Header Subtitle"},
+       {k:"footerLeft", label:"Footer Text"}
+     ],
+     addable:["form-section","items","authorisation","custom"]
+    },
+    {key:"rgf", label:"Returned Goods Form",
+     extraFields:[
+       {k:"formTitle",        label:"Form Title"},
+       {k:"subtitle",         label:"Header Subtitle"},
+       {k:"referenceBoxText", label:"Reference Box Text"},
+       {k:"footerLeft",       label:"Footer Text"}
+     ],
+     addable:["form-section","items","reference-box","instructions","address","custom"]
+    }
   ];
 
   forms.forEach(function(form){
     var pc=cfg.pdfCfg[form.key];
+    if(!pc.sections) pc.sections=JSON.parse(JSON.stringify(DEFAULT_PDF_CFG[form.key].sections));
+
     var card=document.createElement("div"); card.className="card";
     var head=document.createElement("div"); head.className="card-head";
     var h2=document.createElement("h2"); h2.textContent=form.label;
@@ -1075,197 +1085,274 @@ function renderPdfFormsAdmin(){
     var body=document.createElement("div"); body.className="card-body";
 
     // Text fields
-    form.fields.forEach(function(fd){
+    form.extraFields.forEach(function(fd){
       var div=document.createElement("div"); div.className="field"; div.style.marginBottom="10px";
       var lbl=document.createElement("label"); lbl.textContent=fd.label;
       var inp=document.createElement("input"); inp.type="text"; inp.value=pc[fd.k]||"";
-      inp.addEventListener("blur",function(){
-        pc[fd.k]=inp.value.trim();
-        saveConfig(function(){toast("Saved");});
-      });
+      inp.addEventListener("blur",function(){ pc[fd.k]=inp.value.trim(); saveConfig(function(){toast("Saved");}); });
       inp.addEventListener("keydown",function(e){if(e.key==="Enter")inp.blur();});
       div.appendChild(lbl); div.appendChild(inp); body.appendChild(div);
     });
 
-    // Toggle options
-    if(form.toggles.length){
-      var togTitle=document.createElement("p");
-      togTitle.style.cssText="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;margin:12px 0 6px";
-      togTitle.textContent="Options"; body.appendChild(togTitle);
-      form.toggles.forEach(function(tog){
-        var row=document.createElement("div"); row.className="tog-row";
-        var sp=document.createElement("span"); sp.textContent=tog.label;
-        var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!pc[tog.k];
-        cb.addEventListener("change",function(){
-          pc[tog.k]=cb.checked;
-          saveConfig(function(){toast("Saved");});
-        });
-        row.appendChild(sp); row.appendChild(cb); body.appendChild(row);
+    // Sections header
+    var secHdr=document.createElement("p");
+    secHdr.style.cssText="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;margin:14px 0 6px";
+    secHdr.textContent="Form Sections (PDF Order)"; body.appendChild(secHdr);
+
+    var secHelp=document.createElement("p");
+    secHelp.style.cssText="font-size:11px;color:#aaa;margin-bottom:8px";
+    secHelp.textContent="Use \u25b2 \u25bc to reorder. Click a title to rename. Toggle visibility or delete each section.";
+    body.appendChild(secHelp);
+
+    // Section list container
+    var secList=document.createElement("div"); secList.style.cssText="display:flex;flex-direction:column;gap:6px;margin-bottom:12px";
+    body.appendChild(secList);
+
+    function renderSecList(){
+      secList.innerHTML="";
+      pc.sections.forEach(function(sec,si){
+        secList.appendChild(buildPdfSecRow(pc,sec,si,form.key,renderSecList));
       });
     }
+    renderSecList();
 
-    // Section visibility on this form
-    var secTitle=document.createElement("p");
-    secTitle.style.cssText="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;margin:12px 0 6px";
-    secTitle.textContent="Include Sections"; body.appendChild(secTitle);
-    if(!pc.sections) pc.sections={};
-    cfg.sections.forEach(function(sec){
-      var enabled=(pc.sections[sec.id]!==false); // default true
-      var row=document.createElement("div"); row.className="tog-row";
-      var sp=document.createElement("span"); sp.textContent=sec.title;
-      var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=enabled;
-      cb.addEventListener("change",function(){
-        pc.sections[sec.id]=cb.checked;
-        saveConfig(function(){toast("Saved");});
+    // Add section row
+    var addHdr=document.createElement("p");
+    addHdr.style.cssText="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;margin:10px 0 6px";
+    addHdr.textContent="Add Section"; body.appendChild(addHdr);
+
+    var addRow=document.createElement("div"); addRow.style.cssText="display:flex;flex-wrap:wrap;gap:6px";
+    form.addable.forEach(function(type){
+      var b=document.createElement("button"); b.className="btn btn-ghost btn-sm";
+      b.textContent="+ "+PDF_TYPE_LABELS[type];
+      b.addEventListener("click",function(){
+        var newSec={id:pdfGenId(), type:type, title:PDF_TYPE_LABELS[type], visible:true};
+        if(type==="form-section") newSec.secId=cfg.sections.find(function(s){return!s.isItemsSection;})||"customer";
+        if(type==="custom") newSec.content="Enter custom text here.";
+        pc.sections.push(newSec);
+        saveConfig(function(){renderSecList(); toast("Section Added");});
       });
-      row.appendChild(sp); row.appendChild(cb); body.appendChild(row);
+      addRow.appendChild(b);
     });
-
+    body.appendChild(addRow);
     card.appendChild(body); grid.appendChild(card);
   });
 }
 
+function buildPdfSecRow(pc,sec,si,formKey,refresh){
+  var wrap=document.createElement("div");
+  wrap.style.cssText="border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;background:#fff";
+
+  // Top row
+  var row=document.createElement("div");
+  row.style.cssText="display:flex;align-items:center;gap:7px;padding:8px 10px;background:#f8f8f8";
+
+  // Up/Down buttons
+  var ob=document.createElement("div"); ob.className="order-btns";
+  var up=document.createElement("button"); up.className="order-btn"; up.innerHTML="&#9650;"; up.disabled=(si===0);
+  up.addEventListener("click",function(){
+    if(si===0)return;
+    var t=pc.sections[si]; pc.sections[si]=pc.sections[si-1]; pc.sections[si-1]=t;
+    saveConfig(function(){refresh(); toast("Moved Up");});
+  });
+  var dn=document.createElement("button"); dn.className="order-btn"; dn.innerHTML="&#9660;"; dn.disabled=(si===pc.sections.length-1);
+  dn.addEventListener("click",function(){
+    if(si===pc.sections.length-1)return;
+    var t=pc.sections[si]; pc.sections[si]=pc.sections[si+1]; pc.sections[si+1]=t;
+    saveConfig(function(){refresh(); toast("Moved Down");});
+  });
+  ob.appendChild(up); ob.appendChild(dn); row.appendChild(ob);
+
+  // Title
+  var titleInp=document.createElement("input"); titleInp.className="afield-label-inp"; titleInp.value=sec.title||"";
+  titleInp.style.flex="1";
+  titleInp.addEventListener("blur",function(){ sec.title=titleInp.value.trim()||sec.title; saveConfig(function(){toast("Saved");});});
+  titleInp.addEventListener("keydown",function(e){if(e.key==="Enter")titleInp.blur();});
+  row.appendChild(titleInp);
+
+  // Type badge
+  var badge=document.createElement("span"); badge.className="atype-badge";
+  var bc=PDF_TYPE_COLOURS[sec.type]||"#f0f0f0;color:#333";
+  badge.style.cssText="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:99px;flex-shrink:0;background:"+bc.split(";")[0]+";"+bc.split(";")[1];
+  badge.textContent=PDF_TYPE_LABELS[sec.type]||sec.type;
+  row.appendChild(badge);
+
+  // Visible toggle
+  var vis=document.createElement("button"); vis.className="vis-toggle"+(sec.visible?" on":"");
+  vis.textContent=sec.visible?"Visible":"Hidden";
+  vis.addEventListener("click",function(){
+    sec.visible=!sec.visible; vis.className="vis-toggle"+(sec.visible?" on":""); vis.textContent=sec.visible?"Visible":"Hidden";
+    saveConfig(function(){toast("Section "+(sec.visible?"Shown":"Hidden"));});
+  });
+  row.appendChild(vis);
+
+  // Delete
+  var del=document.createElement("button"); del.className="btn btn-danger btn-sm"; del.textContent="\xd7";
+  del.addEventListener("click",function(){
+    confirm2("Remove Section","Remove \""+sec.title+"\" from this PDF form?",function(){
+      pc.sections.splice(si,1);
+      saveConfig(function(){refresh(); toast("Section Removed");});
+    });
+  });
+  row.appendChild(del);
+  wrap.appendChild(row);
+
+  // Form section picker
+  if(sec.type==="form-section"){
+    var subRow=document.createElement("div"); subRow.style.cssText="padding:8px 10px;border-top:1px solid #f0f0f0;display:flex;align-items:center;gap:8px";
+    var lbl=document.createElement("label"); lbl.style.cssText="font-size:12px;color:#888;flex-shrink:0"; lbl.textContent="Pull data from:";
+    var picker=document.createElement("select"); picker.style.cssText="flex:1;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;outline:none";
+    cfg.sections.forEach(function(fs){
+      var o=document.createElement("option"); o.value=fs.id; o.textContent=fs.title;
+      if(fs.id===sec.secId) o.selected=true;
+      picker.appendChild(o);
+    });
+    picker.addEventListener("change",function(){ sec.secId=picker.value; saveConfig(function(){toast("Saved");});});
+    subRow.appendChild(lbl); subRow.appendChild(picker); wrap.appendChild(subRow);
+  }
+
+  // Custom text editor
+  if(sec.type==="custom"){
+    var subRow=document.createElement("div"); subRow.style.cssText="padding:8px 10px;border-top:1px solid #f0f0f0";
+    var lbl=document.createElement("label"); lbl.style.cssText="font-size:12px;color:#888;display:block;margin-bottom:4px"; lbl.textContent="Section Content:";
+    var ta=document.createElement("textarea"); ta.style.cssText="width:100%;padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;min-height:72px;outline:none";
+    ta.value=sec.content||"";
+    ta.addEventListener("blur",function(){ sec.content=ta.value; saveConfig(function(){toast("Saved");});});
+    subRow.appendChild(lbl); subRow.appendChild(ta); wrap.appendChild(subRow);
+  }
+
+  return wrap;
+}
+
 // ═══════════════════════════════════════════
-// PDF EXPORT — works from any record object
+// PDF EXPORT — driven by pc.sections array
 // ═══════════════════════════════════════════
 function exportPDF(rec, type, sections){
   var recDate=rec.selectedDate||fmtDateFromTs(rec.date)||"";
   var recRef=rec.ref||rec.id||"";
   var items=rec.items||[];
   var pc=type==="company"?cfg.pdfCfg.atr:cfg.pdfCfg.rgf;
-  if(!pc)pc=type==="company"?DEFAULT_PDF_CFG.atr:DEFAULT_PDF_CFG.rgf;
+  if(!pc) pc=type==="company"?DEFAULT_PDF_CFG.atr:DEFAULT_PDF_CFG.rgf;
+  if(!pc.sections) pc.sections=JSON.parse(JSON.stringify(DEFAULT_PDF_CFG[type==="company"?"atr":"rgf"].sections));
 
   var jsPDF=window.jspdf.jsPDF;
   var doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
   var W=210,m=16,cw=W-m*2;
-  var logoImg=new Image();logoImg.src=LOGO;
+  var logoImg=new Image(); logoImg.src=LOGO;
 
   function pSH(y,lbl){
-    doc.setFillColor(240,240,240);doc.rect(m,y,cw,7,"F");
-    doc.setTextColor(100,100,100);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
-    doc.text(lbl.toUpperCase(),m+3,y+5);doc.setTextColor(17,17,17);return y+11;
+    doc.setFillColor(240,240,240); doc.rect(m,y,cw,7,"F");
+    doc.setTextColor(100,100,100); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
+    doc.text(lbl.toUpperCase(),m+3,y+5); doc.setTextColor(17,17,17); return y+11;
   }
   function pRW(y,l1,v1,l2,v2){
     var hw=cw/2-3;
-    doc.setFontSize(8);doc.setFont("helvetica","normal");
-    doc.setTextColor(100,100,100);doc.text(l1,m,y);
-    doc.setTextColor(17,17,17);doc.text(String(v1||"-"),m+42,y);
+    doc.setFontSize(8); doc.setFont("helvetica","normal");
+    doc.setTextColor(100,100,100); doc.text(l1,m,y);
+    doc.setTextColor(17,17,17); doc.text(String(v1||"-"),m+42,y);
     if(l2!==undefined){doc.setTextColor(100,100,100);doc.text(l2,m+hw+4,y);doc.setTextColor(17,17,17);doc.text(String(v2||"-"),m+hw+44,y);}
     return y+6;
   }
-  function getRecVal(fid){if(rec.fields&&rec.fields[fid])return rec.fields[fid].value||"";return"";}
-  function getRecLabel(fid,fb){if(rec.fields&&rec.fields[fid])return rec.fields[fid].label||fb;return fb;}
-  function secEnabled(sec){if(!pc.sections)return true;return pc.sections[sec.id]!==false;}
+  function gv(fid){if(rec.fields&&rec.fields[fid])return rec.fields[fid].value||"";return"";}
+  function gl(fid,fb){if(rec.fields&&rec.fields[fid])return rec.fields[fid].label||fb;return fb;}
 
-  if(type==="company"){
-    doc.setFillColor(17,17,17);doc.rect(0,0,W,28,"F");
-    try{doc.addImage(logoImg,"PNG",m,6,48,16);}catch(e){}
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text(pc.subtitle||"Internal — Return Authorisation",W-m,10,{align:"right"});
-    doc.setFontSize(11);doc.setFont("helvetica","bold");doc.text(pc.formTitle||"Return Request ATR Form",m,18);
-    doc.setFontSize(10);doc.setFont("helvetica","bold");doc.text(recRef,W-m,18,{align:"right"});
-    doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text(recDate,W-m,24,{align:"right"});
-    var y=36;
-    sections.forEach(function(sec){
-      if(!secEnabled(sec))return;
-      if(sec.isItemsSection){
-        if(!items.length)return;
-        y=pSH(y,"Items To Be Returned");
-        var cw2=[cw*.4,cw*.3,cw*.3];
-        doc.setFillColor(17,17,17);doc.rect(m,y,cw,7,"F");
-        doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
-        var cx=m+2;["Product","Part Number","Serial Number"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];});y+=7;
-        items.forEach(function(it,idx){
-          doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);doc.rect(m,y,cw,6.5,"F");
-          doc.setTextColor(17,17,17);doc.setFontSize(8);doc.setFont("helvetica","normal");cx=m+2;
-          [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});y+=6.5;
-        });y+=8;return;
-      }
-      var secFields=sec.fields.filter(function(f){return getRecVal(f.id);});
-      if(!secFields.length)return;
-      y=pSH(y,sec.title);
+  // Header
+  doc.setFillColor(17,17,17); doc.rect(0,0,W,28,"F");
+  try{doc.addImage(logoImg,"PNG",m,6,48,16);}catch(e){}
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.text(pc.subtitle||"",W-m,10,{align:"right"});
+  doc.setFontSize(11); doc.setFont("helvetica","bold"); doc.text(pc.formTitle||"",m,18);
+  doc.setFontSize(10); doc.setFont("helvetica","bold"); doc.text(recRef,W-m,18,{align:"right"});
+  doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.text(recDate,W-m,24,{align:"right"});
+
+  var y=36;
+
+  pc.sections.forEach(function(sec){
+    if(!sec.visible) return;
+
+    if(sec.type==="form-section"){
+      var formSec=sections.find(function(s){return s.id===sec.secId;});
+      if(!formSec) return;
+      var hasData=formSec.fields.some(function(f){return gv(f.id);});
+      if(!hasData) return;
+      y=pSH(y,sec.title||formSec.title);
       var i=0;
-      while(i<sec.fields.length){
-        var f=sec.fields[i];var v=getRecVal(f.id);var lbl=getRecLabel(f.id,f.label);
+      while(i<formSec.fields.length){
+        var f=formSec.fields[i]; var v=gv(f.id); var lbl=gl(f.id,f.label);
         if(!v){i++;continue;}
         if(f.type==="textarea"){
-          doc.setFontSize(8);doc.setFont("helvetica","normal");
-          doc.setTextColor(100,100,100);doc.text(lbl+":",m,y);doc.setTextColor(17,17,17);
-          var lines=doc.splitTextToSize(v,cw-44);doc.text(lines,m+44,y);y+=lines.length*5+2;i++;
+          doc.setFontSize(8); doc.setFont("helvetica","normal");
+          doc.setTextColor(100,100,100); doc.text(lbl+":",m,y); doc.setTextColor(17,17,17);
+          var lines=doc.splitTextToSize(v,cw-44); doc.text(lines,m+44,y); y+=lines.length*5+2; i++;
         } else {
-          var nx=sec.fields[i+1];var nxv=nx?getRecVal(nx.id):"";
-          if(nx&&nx.type!=="textarea"&&nxv){y=pRW(y,lbl+":",v,getRecLabel(nx.id,nx.label)+":",nxv);i+=2;}
+          var nx=formSec.fields[i+1]; var nxv=nx?gv(nx.id):"";
+          if(nx&&nx.type!=="textarea"&&nxv){y=pRW(y,lbl+":",v,gl(nx.id,nx.label)+":",nxv);i+=2;}
           else{y=pRW(y,lbl+":",v);i++;}
         }
       }
       y+=4;
-    });
-    if(pc.showAuth!==false){
-      y=pSH(y,"Authorisation");y+=6;
-      doc.setDrawColor(200,200,200);doc.line(m,y+10,m+74,y+10);doc.line(m+88,y+10,m+162,y+10);
-      doc.setFontSize(7.5);doc.setTextColor(140,140,140);doc.text("Authorised Signature",m,y+14);doc.text("Date",m+88,y+14);
     }
-    doc.setFontSize(7);doc.setTextColor(160,160,160);
-    doc.text((pc.footerLeft||"Driventic UK Limited — Internal Use Only")+" — "+recRef,m,288);
-    doc.text(recDate,W-m,288,{align:"right"});
-    doc.save((pc.formTitle||"Return-Request-ATR")+"-"+recRef+".pdf");
-    toast((pc.formTitle||"Return Request ATR Form")+" Downloaded");
 
-  } else {
-    doc.setFillColor(17,17,17);doc.rect(0,0,W,30,"F");
-    try{doc.addImage(logoImg,"PNG",m,7,44,15);}catch(e){}
-    doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont("helvetica","normal");
-    doc.text(pc.subtitle||"Returns Packing Slip",W-m,11,{align:"right"});
-    doc.setFontSize(11);doc.setFont("helvetica","bold");doc.text(pc.formTitle||"Returned Goods Form",m,20);
-    doc.setFontSize(10);doc.setFont("helvetica","bold");doc.text(recRef,W-m,20,{align:"right"});
-    doc.setFontSize(7.5);doc.setFont("helvetica","normal");doc.text(recDate,W-m,27,{align:"right"});
-    var y=38;
-    doc.setFillColor(240,240,240);doc.rect(m,y,cw,26,"F");
-    doc.setTextColor(100,100,100);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
-    doc.text(pc.referenceBoxText||"Your Return Reference — Include This In Your Shipment",m+4,y+6);
-    doc.setTextColor(17,17,17);doc.setFontSize(20);doc.setFont("helvetica","bold");doc.text(recRef,m+4,y+19);y+=32;
-    function ss(lbl){doc.setFillColor(17,17,17);doc.rect(m,y,cw,7,"F");doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont("helvetica","bold");doc.text(lbl,m+3,y+5);doc.setTextColor(17,17,17);y+=10;}
-    function sr(lbl,val){doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(100,100,100);doc.text(lbl,m,y);doc.setTextColor(17,17,17);doc.text(String(val||"-"),m+36,y);y+=5.5;}
-    ss("Your Details");
-    sections.forEach(function(sec){
-      if(!secEnabled(sec)||sec.isItemsSection)return;
-      sec.fields.filter(function(f){return f.type!=="textarea";}).forEach(function(f){
-        var v=getRecVal(f.id);if(!v)return;
-        sr(getRecLabel(f.id,f.label)+":",v);
-      });
-    });
-    y+=4;
-    if(items.length){
-      ss("Items In This Return");
-      var ic=[cw*.4,cw*.3,cw*.3];
-      doc.setFillColor(17,17,17);doc.rect(m,y,cw,6,"F");
-      doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont("helvetica","bold");
-      var cx=m+2;["Description","Part Number","Serial Number"].forEach(function(h,i){doc.text(h,cx,y+4.2);cx+=ic[i];});y+=6;
+    else if(sec.type==="items"){
+      if(!items.length) return;
+      y=pSH(y,sec.title||"Items");
+      var cw2=[cw*.4,cw*.3,cw*.3];
+      doc.setFillColor(17,17,17); doc.rect(m,y,cw,7,"F");
+      doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
+      var cx=m+2; ["Product","Part Number","Serial Number"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];}); y+=7;
       items.forEach(function(it,idx){
-        doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);doc.rect(m,y,cw,6,"F");
-        doc.setTextColor(17,17,17);doc.setFontSize(8);doc.setFont("helvetica","normal");cx=m+2;
-        [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.2);cx+=ic[i];});y+=6;
-      });y+=8;
+        doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255); doc.rect(m,y,cw,6.5,"F");
+        doc.setTextColor(17,17,17); doc.setFontSize(8); doc.setFont("helvetica","normal"); cx=m+2;
+        [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];}); y+=6.5;
+      }); y+=8;
     }
-    if(pc.showInstructions!==false){
-      ss("How To Return Your Items");
+
+    else if(sec.type==="authorisation"){
+      y=pSH(y,sec.title||"Authorisation"); y+=6;
+      doc.setDrawColor(200,200,200); doc.line(m,y+10,m+74,y+10); doc.line(m+88,y+10,m+162,y+10);
+      doc.setFontSize(7.5); doc.setTextColor(140,140,140);
+      doc.text("Authorised Signature",m,y+14); doc.text("Date",m+88,y+14); y+=22;
+    }
+
+    else if(sec.type==="reference-box"){
+      doc.setFillColor(240,240,240); doc.rect(m,y,cw,26,"F");
+      doc.setTextColor(100,100,100); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
+      doc.text(pc.referenceBoxText||"Your Return Reference",m+4,y+6);
+      doc.setTextColor(17,17,17); doc.setFontSize(20); doc.setFont("helvetica","bold"); doc.text(recRef,m+4,y+19); y+=32;
+    }
+
+    else if(sec.type==="instructions"){
+      y=pSH(y,sec.title||"How To Return Your Items");
       ["1.  Pack items securely in appropriate packaging.",
        "2.  Place this slip inside the parcel before sealing.",
        "3.  Attach your returns label to the outside of the box.",
        "4.  Drop off at any authorised carrier location."].forEach(function(s){
-        doc.setFontSize(8.5);doc.setFont("helvetica","normal");doc.setTextColor(17,17,17);doc.text(s,m+2,y);y+=6.5;
-      });
+        doc.setFontSize(8.5); doc.setFont("helvetica","normal"); doc.setTextColor(17,17,17); doc.text(s,m+2,y); y+=6.5;
+      }); y+=4;
     }
-    if(pc.showAddress!==false){
-      y+=6;ss("Return To Address");
+
+    else if(sec.type==="address"){
+      y=pSH(y,sec.title||"Return To Address");
       ADDR.forEach(function(line){doc.setFontSize(8.5);doc.setFont("helvetica","normal");doc.setTextColor(17,17,17);doc.text(line,m+2,y);y+=5.5;});
-      y+=8;doc.setFontSize(7.5);doc.setTextColor(100,100,100);doc.text("Questions? Contact Us Quoting: "+recRef,m,y);
+      y+=6; doc.setFontSize(7.5); doc.setTextColor(100,100,100);
+      doc.text("Questions? Contact Us Quoting: "+recRef,m,y); y+=8;
     }
-    doc.setFontSize(7);doc.setTextColor(160,160,160);
-    doc.text(pc.footerLeft||"Driventic UK Limited · CV47 0FT",m,288);doc.text(recDate,W-m,288,{align:"right"});
-    doc.save((pc.formTitle||"Returned-Goods-Form")+"-"+recRef+".pdf");
-    toast((pc.formTitle||"Returned Goods Form")+" Downloaded");
-  }
+
+    else if(sec.type==="custom"){
+      y=pSH(y,sec.title||"Note");
+      var clines=doc.splitTextToSize(sec.content||"",cw-4);
+      doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(17,17,17);
+      doc.text(clines,m+2,y); y+=clines.length*5.5+6;
+    }
+  });
+
+  // Footer
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text(pc.footerLeft||"Driventic UK Limited",m,288); doc.text(recDate,W-m,288,{align:"right"});
+
+  var fname=(pc.formTitle||"Form").replace(/\s+/g,"-")+"-"+recRef+".pdf";
+  doc.save(fname);
+  toast((pc.formTitle||"Form")+" Downloaded");
 }
 </script>
 </body>
