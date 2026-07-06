@@ -743,28 +743,20 @@ function isMobile(){
 }
 
 function sendEmailWithPDF(pdfResult,subject,body){
-  var file=new File([pdfResult.blob],pdfResult.fname,{type:"application/pdf"});
-  // Web Share API only on mobile — on Windows desktop it creates an empty .tmp file in Outlook
-  if(isMobile()&&navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({files:[file],title:subject,text:body})
-      .then(function(){toast("Select Outlook To Send With Attachment");})
-      .catch(function(err){if(err.name!=="AbortError")fallbackEmail(pdfResult,subject,body);});
-  } else {
-    fallbackEmail(pdfResult,subject,body);
-  }
-}
-
-function fallbackEmail(pdfResult,subject,body){
-  // Download the PDF
+  // Download PDF separately
   var url=URL.createObjectURL(pdfResult.blob);
   var a=document.createElement("a");a.href=url;a.download=pdfResult.fname;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  // Open Outlook via mailto: with subject and body pre-filled
+  // Open email client with subject and body
   setTimeout(function(){
     window.location.href="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
-    toast("PDF Downloaded \u2014 Drag It From Downloads Into The Outlook Email",true);
+    toast("PDF Downloaded \u2014 Attach It To The Email That Opens",true);
   },600);
+}
+
+function fallbackEmail(pdfResult,subject,body){
+  sendEmailWithPDF(pdfResult,subject,body);
 }
 function emailForm(type){
   var items=getItems();
