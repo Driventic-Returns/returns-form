@@ -1272,6 +1272,11 @@ function buildPdfSecRow(pc,sec,si,formKey,refresh){
         var row2=document.createElement("label"); row2.style.cssText="display:flex;align-items:center;gap:6px;font-size:12px;color:#333;padding:4px 6px;border:1px solid #e0e0e0;border-radius:4px;background:#fff;cursor:pointer";
         var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=isChecked; cb.style.accentColor="#111";
         cb.addEventListener("change",function(){
+          // If empty it means "all" — initialise with every field ID first before modifying
+          if(sec.includedFields.length===0){
+            var allSec=cfg.sections.find(function(s){return s.id===sec.secId;});
+            if(allSec) sec.includedFields=allSec.fields.map(function(fx){return fx.id;});
+          }
           if(cb.checked){
             if(sec.includedFields.indexOf(f.id)===-1) sec.includedFields.push(f.id);
           } else {
