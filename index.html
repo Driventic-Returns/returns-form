@@ -306,8 +306,6 @@ var STATUS_OPTIONS = ["Dispatched From Depot","Received At Driventic UK","Dispat
 
 
 var DEFAULT_PDF_CFG = {
-  atr: {
-    formTitle:  "Return Request ATR Form",
     subtitle:   "Internal — Return Authorisation",
     footerLeft: "Driventic UK Limited — Internal Use Only",
     sections: [
@@ -334,6 +332,7 @@ var DEFAULT_PDF_CFG = {
   }
 };
 
+var cfg={sections:JSON.parse(JSON.stringify(DEFAULT_SECTIONS)),fbPassStaff:"",fbPassAdmin:"",pdfCfg:JSON.parse(JSON.stringify(DEFAULT_PDF_CFG))};
 var itemCount=0, refNum="", selectedDate="", selectedDateRaw="";
 var db=null, isAdmin=false, modalCb=null, activeRecord=null;
 
