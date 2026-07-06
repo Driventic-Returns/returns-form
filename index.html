@@ -727,36 +727,74 @@ function getFormFieldByLabel(keyword){
   return result;
 }
 
-function emailForm(type){
-  var items=getItems();
-  if(!items.length){toast("Please Add At Least One Item",false);return;}
-
-  // Build subject line parts
-  var operator=getFormFieldByLabel("operator")||getFormFieldByLabel("engineer")||getFormFieldByLabel("name")||"";
-  var location=getFormFieldByLabel("location")||"";
-  var product=items.length?items[0].name:"";
-
+function buildEmailSubject(operator,location,product,type){
   var prefix=type==="company"?"RETURN REQUEST":"RETURNED GOODS";
   var parts=[prefix];
   if(operator) parts.push(operator);
   var locProd=[location,product].filter(Boolean).join("/");
   if(locProd) parts.push(locProd);
-  var subject=parts.join(" / ");
-
-  var formName=type==="company"
-    ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
-    :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
-
-  var body="Please find the "+formName+" attached.\n\nReference: "+refNum+"\nDate: "+selectedDate;
-
-  // Export PDF first (triggers download)
-  exportFromForm(type);
-
-  // Open email client with subject pre-filled
+  return parts.join(" / ");
+}
+function buildEmailBody(formName,recRef,recDate){
+  return "Please find the "+formName+" attached.\n\nReference: "+recRef+"\nDate: "+recDate;
+}
+function sendEmailWithPDF(pdfResult,subject,body){
+  var file=new File([pdfResult.blob],pdfResult.fname,{type:"application/pdf"});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:subject,text:body})
+      .then(function(){toast("Form Shared Successfully");})
+      .catch(function(err){if(err.name!=="AbortError")fallbackEmail(pdfResult,subject,body);});
+  } else {
+    fallbackEmail(pdfResult,subject,body);
+  }
+}
+function fallbackEmail(pdfResult,subject,body){
+  var url=URL.createObjectURL(pdfResult.blob);
+  var a=document.createElement("a");a.href=url;a.download=pdfResult.fname;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
   setTimeout(function(){
     window.location.href="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
     toast("PDF saved to Downloads \u2014 please attach it to the email",true);
-  },400);
+  },500);
+}
+function emailForm(type){
+  var items=getItems();
+  if(!items.length){toast("Please Add At Least One Item",false);return;}
+  var fakeRec={ref:refNum,selectedDate:selectedDate,items:items,fields:{}};
+  cfg.sections.forEach(function(sec){
+    if(!sec.visible||sec.isItemsSection)return;
+    sec.fields.forEach(function(f){
+      var raw=getFieldValue(f);
+      var val=(f.type==="date"&&raw)?fmtDateLong(raw):raw;
+      fakeRec.fields[f.id]={label:f.label,value:val};
+    });
+  });
+  var operator=getFormFieldByLabel("operator")||getFormFieldByLabel("engineer")||getFormFieldByLabel("name")||"";
+  var location=getFormFieldByLabel("location")||"";
+  var product=items.length?items[0].name:"";
+  var formName=type==="company"
+    ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
+    :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
+  var subject=buildEmailSubject(operator,location,product,type);
+  var body=buildEmailBody(formName,refNum,selectedDate);
+  var pdfResult=exportPDF(fakeRec,type,cfg.sections,true);
+  sendEmailWithPDF(pdfResult,subject,body);
+}
+function emailFormFromRecord(rec,type){
+  var items=rec.items||[];
+  var operator=getRecFieldByLabel(rec,"operator")||getRecFieldByLabel(rec,"engineer")||(rec.customer&&rec.customer.name)||"";
+  var location=getRecFieldByLabel(rec,"location")||"";
+  var product=items.length?items[0].name:"";
+  var recRef=rec.ref||rec.id||"";
+  var recDate=rec.selectedDate||fmtDateFromTs(rec.date)||"";
+  var formName=type==="company"
+    ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
+    :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
+  var subject=buildEmailSubject(operator,location,product,type);
+  var body=buildEmailBody(formName,recRef,recDate);
+  var pdfResult=exportPDF(rec,type,cfg.sections,true);
+  sendEmailWithPDF(pdfResult,subject,body);
 }
 function exportFromForm(type){
   var items=getItems();
@@ -977,36 +1015,7 @@ function getRecFieldByLabel(rec,keyword){
   return "";
 }
 
-function emailFormFromRecord(rec,type){
-  var items=rec.items||[];
-  var operator=getRecFieldByLabel(rec,"operator")||getRecFieldByLabel(rec,"engineer")||(rec.customer&&rec.customer.name)||"";
-  var location=getRecFieldByLabel(rec,"location")||"";
-  var product=items.length?items[0].name:"";
-  var recRef=rec.ref||rec.id||"";
-  var recDate=rec.selectedDate||fmtDateFromTs(rec.date)||"";
 
-  var prefix=type==="company"?"RETURN REQUEST":"RETURNED GOODS";
-  var parts=[prefix];
-  if(operator) parts.push(operator);
-  var locProd=[location,product].filter(Boolean).join("/");
-  if(locProd) parts.push(locProd);
-  var subject=parts.join(" / ");
-
-  var formName=type==="company"
-    ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
-    :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
-
-  var body="Please find the "+formName+" attached.\n\nReference: "+recRef+"\nDate: "+recDate;
-
-  // Export PDF first
-  exportPDF(rec,type,cfg.sections);
-
-  // Open email client
-  setTimeout(function(){
-    window.location.href="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
-    toast("PDF saved to Downloads \u2014 please attach it to the email",true);
-  },400);
-}
 
 // ═══════════════════════════════════════════
 // ADMIN
@@ -1426,7 +1435,7 @@ function buildPdfSecRow(pc,sec,si,formKey,refresh){
 // ═══════════════════════════════════════════
 // PDF EXPORT — driven by pc.sections array
 // ═══════════════════════════════════════════
-function exportPDF(rec, type, sections){
+function exportPDF(rec, type, sections, returnBlob){
   var recDate=rec.selectedDate||fmtDateFromTs(rec.date)||"";
   var recRef=rec.ref||rec.id||"";
   var items=rec.items||[];
@@ -1555,6 +1564,7 @@ function exportPDF(rec, type, sections){
   doc.text(pc.footerLeft||"Driventic UK Limited",m,288); doc.text(recDate,W-m,288,{align:"right"});
 
   var fname=(pc.formTitle||"Form").replace(/\s+/g,"-")+"-"+recRef+".pdf";
+  if(returnBlob) return {blob:doc.output("blob"), fname:fname};
   doc.save(fname);
   toast((pc.formTitle||"Form")+" Downloaded");
 }
