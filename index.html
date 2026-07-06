@@ -1239,8 +1239,11 @@ function buildPdfSecRow(pc,sec,si,formKey,refresh){
   row.appendChild(del);
   wrap.appendChild(row);
 
-  // Form section picker
+  // Form section picker + field selection
   if(sec.type==="form-section"){
+    if(!sec.includedFields) sec.includedFields=[];
+
+    // Section picker row
     var subRow=document.createElement("div"); subRow.style.cssText="padding:8px 10px;border-top:1px solid #f0f0f0;display:flex;align-items:center;gap:8px";
     var lbl=document.createElement("label"); lbl.style.cssText="font-size:12px;color:#888;flex-shrink:0"; lbl.textContent="Pull data from:";
     var picker=document.createElement("select"); picker.style.cssText="flex:1;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;outline:none";
@@ -1249,8 +1252,59 @@ function buildPdfSecRow(pc,sec,si,formKey,refresh){
       if(fs.id===sec.secId) o.selected=true;
       picker.appendChild(o);
     });
-    picker.addEventListener("change",function(){ sec.secId=picker.value; saveConfig(function(){toast("Saved");});});
+
+    // Field checkboxes container
+    var fieldBox=document.createElement("div"); fieldBox.style.cssText="padding:8px 10px 10px;border-top:1px solid #f0f0f0;background:#fafafa";
+    var fieldLbl=document.createElement("p"); fieldLbl.style.cssText="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:6px"; fieldLbl.textContent="Include Fields:";
+    fieldBox.appendChild(fieldLbl);
+
+    function renderFieldCheckboxes(){
+      // Remove all children except the label
+      while(fieldBox.children.length>1) fieldBox.removeChild(fieldBox.lastChild);
+      var selSec=cfg.sections.find(function(s){return s.id===sec.secId;});
+      if(!selSec||!selSec.fields||!selSec.fields.length){
+        var none=document.createElement("p"); none.style.cssText="font-size:12px;color:#aaa"; none.textContent="No fields in this section.";
+        fieldBox.appendChild(none); return;
+      }
+      var grid=document.createElement("div"); grid.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:4px";
+      selSec.fields.forEach(function(f){
+        var isChecked=sec.includedFields.length===0||sec.includedFields.indexOf(f.id)!==-1;
+        var row2=document.createElement("label"); row2.style.cssText="display:flex;align-items:center;gap:6px;font-size:12px;color:#333;padding:4px 6px;border:1px solid #e0e0e0;border-radius:4px;background:#fff;cursor:pointer";
+        var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=isChecked; cb.style.accentColor="#111";
+        cb.addEventListener("change",function(){
+          if(cb.checked){
+            if(sec.includedFields.indexOf(f.id)===-1) sec.includedFields.push(f.id);
+          } else {
+            sec.includedFields=sec.includedFields.filter(function(x){return x!==f.id;});
+          }
+          saveConfig(function(){toast("Saved");});
+        });
+        row2.appendChild(cb); row2.appendChild(document.createTextNode(f.label));
+        grid.appendChild(row2);
+      });
+      fieldBox.appendChild(grid);
+      // "Select all / none" helpers
+      var helpers=document.createElement("div"); helpers.style.cssText="display:flex;gap:8px;margin-top:6px";
+      var allBtn=document.createElement("button"); allBtn.className="btn btn-ghost btn-sm"; allBtn.textContent="Select All";
+      allBtn.addEventListener("click",function(){
+        var selSec2=cfg.sections.find(function(s){return s.id===sec.secId;});
+        sec.includedFields=selSec2?selSec2.fields.map(function(f){return f.id;}):[]; saveConfig(function(){renderFieldCheckboxes();toast("All Selected");});
+      });
+      var noneBtn=document.createElement("button"); noneBtn.className="btn btn-ghost btn-sm"; noneBtn.textContent="Select None";
+      noneBtn.addEventListener("click",function(){
+        sec.includedFields=[]; saveConfig(function(){renderFieldCheckboxes();toast("None Selected");});
+      });
+      helpers.appendChild(allBtn); helpers.appendChild(noneBtn); fieldBox.appendChild(helpers);
+    }
+
+    picker.addEventListener("change",function(){
+      sec.secId=picker.value;
+      sec.includedFields=[];
+      saveConfig(function(){renderFieldCheckboxes();toast("Saved");});
+    });
+    renderFieldCheckboxes();
     subRow.appendChild(lbl); subRow.appendChild(picker); wrap.appendChild(subRow);
+    wrap.appendChild(fieldBox);
   }
 
   // Custom text editor
@@ -1315,19 +1369,24 @@ function exportPDF(rec, type, sections){
     if(sec.type==="form-section"){
       var formSec=sections.find(function(s){return s.id===sec.secId;});
       if(!formSec) return;
-      var hasData=formSec.fields.some(function(f){return gv(f.id);});
+      // Filter fields by includedFields if set
+      var allowedFields=formSec.fields;
+      if(sec.includedFields&&sec.includedFields.length>0){
+        allowedFields=formSec.fields.filter(function(f){return sec.includedFields.indexOf(f.id)!==-1;});
+      }
+      var hasData=allowedFields.some(function(f){return gv(f.id);});
       if(!hasData) return;
       y=pSH(y,sec.title||formSec.title);
       var i=0;
-      while(i<formSec.fields.length){
-        var f=formSec.fields[i]; var v=gv(f.id); var lbl=gl(f.id,f.label);
+      while(i<allowedFields.length){
+        var f=allowedFields[i]; var v=gv(f.id); var lbl=gl(f.id,f.label);
         if(!v){i++;continue;}
         if(f.type==="textarea"){
           doc.setFontSize(8); doc.setFont("helvetica","normal");
           doc.setTextColor(100,100,100); doc.text(lbl+":",m,y); doc.setTextColor(17,17,17);
           var lines=doc.splitTextToSize(v,cw-44); doc.text(lines,m+44,y); y+=lines.length*5+2; i++;
         } else {
-          var nx=formSec.fields[i+1]; var nxv=nx?gv(nx.id):"";
+          var nx=allowedFields[i+1]; var nxv=nx?gv(nx.id):"";
           if(nx&&nx.type!=="textarea"&&nxv){y=pRW(y,lbl+":",v,gl(nx.id,nx.label)+":",nxv);i+=2;}
           else{y=pRW(y,lbl+":",v);i++;}
         }
