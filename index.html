@@ -306,6 +306,8 @@ var STATUS_OPTIONS = ["Dispatched From Depot","Received At Driventic UK","Dispat
 
 
 var DEFAULT_PDF_CFG = {
+  atr: {
+    formTitle:  "Return Request ATR Form",
     subtitle:   "Internal — Return Authorisation",
     footerLeft: "Driventic UK Limited — Internal Use Only",
     sections: [
@@ -386,17 +388,29 @@ g("btn-login").addEventListener("click",function(){
 });
 g("pw-input").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-login").click();});
 function doLogin(){
-  g("login-screen").style.display="none";g("app").style.display="block";
-  loadScripts(function(){loadConfig(function(){showPage("form");});});
+  g("login-screen").style.display="none"; g("app").style.display="block";
+  // Show loading state
+  g("nav-form").textContent="Loading...";
+  loadScripts(function(){
+    loadConfig(function(){
+      g("nav-form").textContent="New Return";
+      showPage("form");
+    });
+  });
 }
 
-// ═══════════════════════════════════════════
-// SCRIPTS
-// ═══════════════════════════════════════════
 function loadScripts(cb){
   function one(src,next){
-    var s=document.createElement("script");s.src=src;s.onload=next;
-    s.onerror=function(){toast("Failed To Load Scripts.",false);};
+    var s=document.createElement("script"); s.src=src;
+    s.onload=next;
+    s.onerror=function(){
+      g("nav-form").textContent="New Return";
+      // Show error on screen so user can see it
+      var err=document.createElement("div");
+      err.style.cssText="position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:14px 24px;border-radius:8px;font-size:14px;z-index:9999;max-width:90vw;text-align:center";
+      err.textContent="Failed to load required scripts. Check your internet connection and refresh the page.";
+      document.body.appendChild(err);
+    };
     document.head.appendChild(s);
   }
   one("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js",function(){
@@ -410,12 +424,15 @@ function loadScripts(cb){
           messagingSenderId:"777449072637",
           appId:"1:777449072637:web:d3393e7eb671e2cd715b94"
         });}catch(e){}
-        db=firebase.firestore();cb();
+        db=firebase.firestore(); cb();
       });
     });
   });
 }
 
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
 // ═══════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════
