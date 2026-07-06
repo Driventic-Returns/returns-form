@@ -727,12 +727,13 @@ function getFormFieldByLabel(keyword){
   return result;
 }
 
-function buildEmailSubject(operator,location,product,type){
+function buildEmailSubject(operator,location,product,type,ref){
   var prefix=type==="company"?"RETURN REQUEST":"RETURNED GOODS";
   var parts=[prefix];
+  if(ref) parts.push(ref);
   if(operator) parts.push(operator);
-  var locProd=[location,product].filter(Boolean).join("/");
-  if(locProd) parts.push(locProd);
+  if(location) parts.push(location);
+  if(product) parts.push(product);
   return parts.join(" / ");
 }
 function buildEmailBody(formName,recRef,recDate){
@@ -776,7 +777,7 @@ function emailForm(type){
   var formName=type==="company"
     ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
     :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
-  var subject=buildEmailSubject(operator,location,product,type);
+  var subject=buildEmailSubject(operator,location,product,type,refNum);
   var body=buildEmailBody(formName,refNum,selectedDate);
   var pdfResult=exportPDF(fakeRec,type,cfg.sections,true);
   sendEmailWithPDF(pdfResult,subject,body);
@@ -791,7 +792,7 @@ function emailFormFromRecord(rec,type){
   var formName=type==="company"
     ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
     :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
-  var subject=buildEmailSubject(operator,location,product,type);
+  var subject=buildEmailSubject(operator,location,product,type,recRef);
   var body=buildEmailBody(formName,recRef,recDate);
   var pdfResult=exportPDF(rec,type,cfg.sections,true);
   sendEmailWithPDF(pdfResult,subject,body);
