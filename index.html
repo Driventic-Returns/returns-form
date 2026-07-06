@@ -138,7 +138,7 @@ tr:hover td{background:#fafafa}
 .detail-head{padding:16px 20px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;background:#f8f8f8;gap:12px;flex-wrap:wrap}
 .detail-head-left h3{font-size:15px;font-weight:600;margin-bottom:2px}
 .detail-head-left p{font-size:12px;color:#888}
-.detail-head-right{display:flex;gap:8px;flex-wrap:wrap}
+.detail-head-right{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .detail-body{padding:20px}
 .detail-sec{margin-bottom:18px}
 .detail-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f0f0f0}
@@ -278,6 +278,8 @@ tr:hover td{background:#fafafa}
       <div class="detail-head-right">
         <button class="btn btn-black btn-sm" id="detail-btn-company">&#8595; Return Request ATR Form</button>
         <button class="btn btn-outline btn-sm" id="detail-btn-custslip">&#8595; Returned Goods Form</button>
+        <button class="btn btn-ghost btn-sm" id="detail-btn-email-atr">&#9993; E-mail Return Request</button>
+        <button class="btn btn-ghost btn-sm" id="detail-btn-email-rgf">&#9993; E-mail Returned Goods</button>
         <button class="btn btn-ghost btn-sm" id="detail-close">Close</button>
       </div>
     </div>
@@ -961,6 +963,50 @@ g("detail-close").addEventListener("click",function(){g("detail-bg").classList.r
 g("detail-bg").addEventListener("click",function(e){if(e.target===g("detail-bg")){g("detail-bg").classList.remove("open");activeRecord=null;}});
 g("detail-btn-company").addEventListener("click",function(){if(activeRecord)exportPDF(activeRecord,"company",cfg.sections);});
 g("detail-btn-custslip").addEventListener("click",function(){if(activeRecord)exportPDF(activeRecord,"customer",cfg.sections);});
+g("detail-btn-email-atr").addEventListener("click",function(){if(activeRecord)emailFormFromRecord(activeRecord,"company");});
+g("detail-btn-email-rgf").addEventListener("click",function(){if(activeRecord)emailFormFromRecord(activeRecord,"customer");});
+
+function getRecFieldByLabel(rec,keyword){
+  if(!rec.fields) return "";
+  var keys=Object.keys(rec.fields);
+  for(var i=0;i<keys.length;i++){
+    var fd=rec.fields[keys[i]];
+    if(fd&&fd.label&&fd.label.toLowerCase().indexOf(keyword.toLowerCase())!==-1&&fd.value)
+      return fd.value;
+  }
+  return "";
+}
+
+function emailFormFromRecord(rec,type){
+  var items=rec.items||[];
+  var operator=getRecFieldByLabel(rec,"operator")||getRecFieldByLabel(rec,"engineer")||(rec.customer&&rec.customer.name)||"";
+  var location=getRecFieldByLabel(rec,"location")||"";
+  var product=items.length?items[0].name:"";
+  var recRef=rec.ref||rec.id||"";
+  var recDate=rec.selectedDate||fmtDateFromTs(rec.date)||"";
+
+  var prefix=type==="company"?"RETURN REQUEST":"RETURNED GOODS";
+  var parts=[prefix];
+  if(operator) parts.push(operator);
+  var locProd=[location,product].filter(Boolean).join("/");
+  if(locProd) parts.push(locProd);
+  var subject=parts.join(" / ");
+
+  var formName=type==="company"
+    ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
+    :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
+
+  var body="Please find the "+formName+" attached.\n\nReference: "+recRef+"\nDate: "+recDate;
+
+  // Export PDF first
+  exportPDF(rec,type,cfg.sections);
+
+  // Open email client
+  setTimeout(function(){
+    window.location.href="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+    toast("PDF saved to Downloads \u2014 please attach it to the email",true);
+  },400);
+}
 
 // ═══════════════════════════════════════════
 // ADMIN
