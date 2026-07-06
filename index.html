@@ -205,6 +205,10 @@ tr:hover td{background:#fafafa}
         <button class="btn btn-black btn-full" id="btn-company">&#8595; Return Request ATR Form</button>
         <button class="btn btn-outline btn-full" id="btn-custslip">&#8595; Returned Goods Form</button>
       </div>
+      <div class="export-grid" style="margin-top:8px">
+        <button class="btn btn-ghost btn-full" id="btn-email-atr">&#9993; E-mail Return Request Form</button>
+        <button class="btn btn-ghost btn-full" id="btn-email-rgf">&#9993; E-mail Returned Goods Form</button>
+      </div>
       <button class="btn btn-ghost btn-full" id="btn-clear" style="margin-top:8px">&#8635; Clear &amp; Start New Return</button>
     </div>
   </div>
@@ -704,6 +708,54 @@ g("btn-clear").addEventListener("click",function(){
 // FORM PDF EXPORT
 g("btn-company").addEventListener("click",  function(){exportFromForm("company");});
 g("btn-custslip").addEventListener("click", function(){exportFromForm("customer");});
+g("btn-email-atr").addEventListener("click",function(){emailForm("company");});
+g("btn-email-rgf").addEventListener("click",function(){emailForm("customer");});
+
+// Get a form field value by searching field labels
+function getFormFieldByLabel(keyword){
+  var result="";
+  cfg.sections.forEach(function(sec){
+    if(sec.isItemsSection||!sec.visible) return;
+    sec.fields.forEach(function(f){
+      if(!result&&f.label.toLowerCase().indexOf(keyword.toLowerCase())!==-1){
+        var el=g(f.id); if(el&&el.value.trim()) result=el.value.trim();
+      }
+    });
+  });
+  return result;
+}
+
+function emailForm(type){
+  var items=getItems();
+  if(!items.length){toast("Please Add At Least One Item",false);return;}
+
+  // Build subject line parts
+  var operator=getFormFieldByLabel("operator")||getFormFieldByLabel("engineer")||getFormFieldByLabel("name")||"";
+  var location=getFormFieldByLabel("location")||"";
+  var product=items.length?items[0].name:"";
+
+  var prefix=type==="company"?"RETURN REQUEST":"RETURNED GOODS";
+  var parts=[prefix];
+  if(operator) parts.push(operator);
+  var locProd=[location,product].filter(Boolean).join("/");
+  if(locProd) parts.push(locProd);
+  var subject=parts.join(" / ");
+
+  var formName=type==="company"
+    ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
+    :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
+
+  var body="Please find the "+formName+" attached.\n\nReference: "+refNum+"\nDate: "+selectedDate;
+
+  // Export PDF first (triggers download)
+  exportFromForm(type);
+
+  // Open email client with subject pre-filled
+  setTimeout(function(){
+    window.location.href="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+    toast("PDF saved to Downloads \u2014 please attach it to the email",true);
+  },400);
+}
 function exportFromForm(type){
   var items=getItems();
   if(!items.length){toast("Please Add At Least One Item",false);return;}
