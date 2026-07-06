@@ -740,22 +740,47 @@ function buildEmailBody(formName,recRef,recDate){
 }
 function sendEmailWithPDF(pdfResult,subject,body){
   var file=new File([pdfResult.blob],pdfResult.fname,{type:"application/pdf"});
+  // Web Share API — on mobile/modern desktop shows share sheet including Outlook
   if(navigator.canShare&&navigator.canShare({files:[file]})){
     navigator.share({files:[file],title:subject,text:body})
-      .then(function(){toast("Form Shared Successfully");})
+      .then(function(){toast("Select Outlook From The Share Menu To Attach The PDF");})
       .catch(function(err){if(err.name!=="AbortError")fallbackEmail(pdfResult,subject,body);});
   } else {
     fallbackEmail(pdfResult,subject,body);
   }
 }
+
 function fallbackEmail(pdfResult,subject,body){
+  // Download the PDF first
   var url=URL.createObjectURL(pdfResult.blob);
   var a=document.createElement("a");a.href=url;a.download=pdfResult.fname;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
+
+  // Try Outlook app protocol (ms-outlook://) — works if Outlook is installed
+  // Fall back to mailto: if Outlook protocol not available
+  var outlookUrl="ms-outlook://compose?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+  var mailtoUrl="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+
   setTimeout(function(){
-    window.location.href="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
-    toast("PDF saved to Downloads \u2014 please attach it to the email",true);
+    // Attempt to open Outlook app via its registered protocol
+    var hidden=document.createElement("iframe");
+    hidden.style.cssText="display:none;width:0;height:0;border:none";
+    document.body.appendChild(hidden);
+    var t=Date.now();
+    hidden.onload=function(){document.body.removeChild(hidden);};
+    try{
+      hidden.src=outlookUrl;
+      // If the page is still visible after 1.5s, Outlook protocol didn't work — use mailto:
+      setTimeout(function(){
+        document.body.removeChild(hidden);
+        if(Date.now()-t<2500) window.location.href=mailtoUrl;
+      },1500);
+    }catch(e){
+      document.body.removeChild(hidden);
+      window.location.href=mailtoUrl;
+    }
+    toast("PDF Saved \u2014 Attach It To The Outlook Email That Opens",true);
   },500);
 }
 function emailForm(type){
