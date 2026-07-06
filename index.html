@@ -247,7 +247,7 @@ tr:hover td{background:#fafafa}
         <!-- rendered by renderPdfFormsAdmin() -->
       </div>
     </div>
-    
+    <div class="atab-panel" id="tab-passwords">
       <div class="card"><div class="card-body">
         <p style="font-size:13px;color:#666;margin-bottom:16px">Staff can access the form and records. Admin can access everything including this panel.</p>
         <div class="g2">
@@ -1116,7 +1116,9 @@ function renderPdfFormsAdmin(){
 
   forms.forEach(function(form){
     var pc=cfg.pdfCfg[form.key];
-    if(!pc.sections) pc.sections=JSON.parse(JSON.stringify(DEFAULT_PDF_CFG[form.key].sections));
+    if(!pc.sections || !Array.isArray(pc.sections) || pc.sections.length===0){
+      pc.sections=JSON.parse(JSON.stringify(DEFAULT_PDF_CFG[form.key].sections));
+    }
 
     var card=document.createElement("div"); card.className="card";
     var head=document.createElement("div"); head.className="card-head";
