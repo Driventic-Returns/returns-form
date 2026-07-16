@@ -796,8 +796,20 @@ function buildEmailBody(formName,recRef,recDate,rec,type,formSections){
 
     else if(sec.type==="authorisation"){
       lines.push("--- "+(sec.title||"Authorisation")+" ---");
-      lines.push("Authorised Signature: _______________________");
-      lines.push("Date: _______________");
+      var authName="";
+      if(rec&&rec.fields){
+        Object.keys(rec.fields).forEach(function(k){
+          var fd=rec.fields[k];
+          if(fd&&fd.label&&fd.value&&!authName){
+            var lbl=fd.label.toLowerCase();
+            if(lbl.indexOf("operator")!==-1||lbl.indexOf("engineer")!==-1||lbl.indexOf("processed")!==-1)
+              authName=fd.value;
+          }
+        });
+      }
+      var authDate=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"});
+      lines.push("Authorised By: "+authName);
+      lines.push("Date: "+authDate);
       lines.push("");
     }
 
@@ -1593,10 +1605,28 @@ function exportPDF(rec, type, sections, returnBlob){
     }
 
     else if(sec.type==="authorisation"){
-      y=pSH(y,sec.title||"Authorisation"); y+=6;
-      doc.setDrawColor(200,200,200); doc.line(m,y+10,m+74,y+10); doc.line(m+88,y+10,m+162,y+10);
-      doc.setFontSize(7.5); doc.setTextColor(140,140,140);
-      doc.text("Authorised Signature",m,y+14); doc.text("Date",m+88,y+14); y+=22;
+      y=pSH(y,sec.title||"Authorisation"); y+=4;
+      // Find engineer/operator name from record fields
+      var authName="";
+      if(rec&&rec.fields){
+        Object.keys(rec.fields).forEach(function(k){
+          var fd=rec.fields[k];
+          if(fd&&fd.label&&fd.value&&!authName){
+            var lbl=fd.label.toLowerCase();
+            if(lbl.indexOf("operator")!==-1||lbl.indexOf("engineer")!==-1||lbl.indexOf("processed")!==-1)
+              authName=fd.value;
+          }
+        });
+      }
+      var authDate=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"});
+      doc.setFontSize(8);doc.setFont("helvetica","normal");
+      doc.setTextColor(100,100,100);doc.text("Authorised By:",m,y);
+      doc.setTextColor(17,17,17);doc.text(authName||"",m+38,y);
+      doc.setDrawColor(200,200,200);doc.line(m+38,y+1,m+cw,y+1);
+      y+=8;
+      doc.setTextColor(100,100,100);doc.text("Date:",m,y);
+      doc.setTextColor(17,17,17);doc.text(authDate,m+38,y);
+      y+=10;
     }
 
     else if(sec.type==="reference-box"){
