@@ -802,7 +802,7 @@ function buildEmailBody(formName,recRef,recDate,rec,type,formSections){
           var fd=rec.fields[k];
           if(fd&&fd.label&&fd.value&&!authName){
             var lbl=fd.label.toLowerCase();
-            if(lbl.indexOf("operator")!==-1||lbl.indexOf("engineer")!==-1||lbl.indexOf("processed")!==-1)
+            if(lbl.indexOf("engineer name")!==-1||lbl==="engineer name")
               authName=fd.value;
           }
         });
@@ -1613,7 +1613,7 @@ function exportPDF(rec, type, sections, returnBlob){
           var fd=rec.fields[k];
           if(fd&&fd.label&&fd.value&&!authName){
             var lbl=fd.label.toLowerCase();
-            if(lbl.indexOf("operator")!==-1||lbl.indexOf("engineer")!==-1||lbl.indexOf("processed")!==-1)
+            if(lbl.indexOf("engineer name")!==-1||lbl==="engineer name")
               authName=fd.value;
           }
         });
