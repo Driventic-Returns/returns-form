@@ -736,8 +736,79 @@ function buildEmailSubject(operator,location,product,type,ref){
   if(product) parts.push(product);
   return parts.join(" / ");
 }
-function buildEmailBody(formName,recRef,recDate){
-  return "Please find the "+formName+" attached.\n\nReference: "+recRef+"\nDate: "+recDate;
+function buildEmailBody(formName,recRef,recDate,rec,type,formSections){
+  var pc=(type==="company"?cfg.pdfCfg.atr:cfg.pdfCfg.rgf)||{};
+  var pdfSecs=pc.sections||(type==="company"?DEFAULT_PDF_CFG.atr:DEFAULT_PDF_CFG.rgf).sections;
+  var items=rec&&rec.items||[];
+  function rv(fid){if(rec&&rec.fields&&rec.fields[fid])return rec.fields[fid].value||"";return"";}
+  function rl(fid,fb){if(rec&&rec.fields&&rec.fields[fid])return rec.fields[fid].label||fb;return fb;}
+
+  var lines=[formName,"Reference: "+recRef,"Date: "+recDate,""];
+
+  pdfSecs.forEach(function(sec){
+    if(!sec.visible) return;
+
+    if(sec.type==="form-section"){
+      var fs=formSections.find(function(s){return s.id===sec.secId;});
+      if(!fs) return;
+      var allowed=fs.fields;
+      if(sec.includedFields&&sec.includedFields.length>0)
+        allowed=fs.fields.filter(function(f){return sec.includedFields.indexOf(f.id)!==-1;});
+      var hasData=allowed.some(function(f){return rv(f.id);});
+      if(!hasData) return;
+      lines.push("--- "+(sec.title||fs.title)+" ---");
+      allowed.forEach(function(f){var v=rv(f.id);if(v) lines.push(rl(f.id,f.label)+": "+v);});
+      lines.push("");
+    }
+
+    else if(sec.type==="items"){
+      if(!items.length) return;
+      lines.push("--- "+(sec.title||"Items")+" ---");
+      items.forEach(function(it){
+        var p=[it.name];
+        if(it.partNumber) p.push("Part No: "+it.partNumber);
+        if(it.serialNumber) p.push("Serial No: "+it.serialNumber);
+        lines.push("  "+p.join("  |  "));
+      });
+      lines.push("");
+    }
+
+    else if(sec.type==="reference-box"){
+      lines.push("--- Reference ---");
+      lines.push(recRef);
+      lines.push("");
+    }
+
+    else if(sec.type==="instructions"){
+      lines.push("--- "+(sec.title||"How To Return Your Items")+" ---");
+      ["1. Pack items securely in appropriate packaging.",
+       "2. Place this slip inside the parcel before sealing.",
+       "3. Attach your returns label to the outside of the box.",
+       "4. Drop off at any authorised carrier location."].forEach(function(s){lines.push(s);});
+      lines.push("");
+    }
+
+    else if(sec.type==="address"){
+      lines.push("--- "+(sec.title||"Return To Address")+" ---");
+      ADDR.forEach(function(l){lines.push(l);});
+      lines.push("");
+    }
+
+    else if(sec.type==="authorisation"){
+      lines.push("--- "+(sec.title||"Authorisation")+" ---");
+      lines.push("Authorised Signature: _______________________");
+      lines.push("Date: _______________");
+      lines.push("");
+    }
+
+    else if(sec.type==="custom"&&sec.content){
+      lines.push("--- "+(sec.title||"Note")+" ---");
+      lines.push(sec.content);
+      lines.push("");
+    }
+  });
+
+  return lines.join("\n");
 }
 function isMobile(){
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -751,7 +822,7 @@ function sendEmailWithPDF(pdfResult,subject,body){
   URL.revokeObjectURL(url);
   // Open email client with subject and body
   setTimeout(function(){
-    window.location.href="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+    window.location.href="mailto:david.keyte@driventic.com,lesley.bannister@driventic.com?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
     toast("PDF Downloaded \u2014 Attach It To The Email That Opens",true);
   },600);
 }
@@ -778,7 +849,7 @@ function emailForm(type){
     ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
     :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
   var subject=buildEmailSubject(operator,location,product,type,refNum);
-  var body=buildEmailBody(formName,refNum,selectedDate);
+  var body=buildEmailBody(formName,refNum,selectedDate,fakeRec,type,cfg.sections);
   var pdfResult=exportPDF(fakeRec,type,cfg.sections,true);
   sendEmailWithPDF(pdfResult,subject,body);
 }
@@ -793,7 +864,7 @@ function emailFormFromRecord(rec,type){
     ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
     :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
   var subject=buildEmailSubject(operator,location,product,type,recRef);
-  var body=buildEmailBody(formName,recRef,recDate);
+  var body=buildEmailBody(formName,recRef,recDate,rec,type,cfg.sections);
   var pdfResult=exportPDF(rec,type,cfg.sections,true);
   sendEmailWithPDF(pdfResult,subject,body);
 }
