@@ -33,7 +33,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-btn{padding:6px 14px;border:none;background:none;font-size:13px;font-family:inherit;color:#666;cursor:pointer;border-radius:6px;font-weight:500;transition:all .15s}
 .nav-btn:hover{background:#f0f0f0;color:#111}
 .nav-btn.active{background:#111;color:#fff}
-.ref-pill{font-size:11px;font-weight:600;letter-spacing:.06em;background:#f0f0f0;color:#333;padding:4px 10px;border-radius:99px}
 .prog-wrap{height:3px;background:#f0f0f0}
 .prog-bar{height:3px;background:#111;width:0%;transition:width .35s}
 .page{max-width:820px;margin:1.5rem auto;padding:0 1.5rem 4rem}
@@ -111,6 +110,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .add-sec-row input{flex:1;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;outline:none}
 .add-sec-row input:focus{border-color:#111}
 /* RECORDS */
+.frt-input{padding:5px 8px;border:1px solid #e0e0e0;border-radius:4px;font-size:12px;font-family:monospace;font-weight:600;width:115px;outline:none;background:#f5f5f5;color:#999;transition:background .2s,color .2s}
+.frt-input.has-number{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7}
+.frt-input:focus{border-color:#111}
 .rec-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
 .rec-toolbar h2{font-size:15px;font-weight:600}
 .tbl-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;overflow-x:auto}
@@ -191,7 +193,7 @@ tr:hover td{background:#fafafa}
       <button class="nav-btn" id="nav-records">Records</button>
       <button class="nav-btn" id="nav-admin">Admin</button>
     </div>
-    <span class="ref-pill" id="ref-display">FRT-——</span>
+
   </div>
   <div class="prog-wrap"><div class="prog-bar" id="prog"></div></div>
 
@@ -224,7 +226,7 @@ tr:hover td{background:#fafafa}
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Reference</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th><th>Update Status</th><th>View</th><th></th></tr></thead>
+        <thead><tr><th>FRT</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th><th>Update Status</th><th>View</th><th></th></tr></thead>
         <tbody id="records-body"></tbody>
       </table>
     </div>
@@ -419,7 +421,6 @@ g("btn-login").addEventListener("click",function(){
 g("pw-input").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-login").click();});
 function doLogin(){
   g("login-screen").style.display="none"; g("app").style.display="block";
-  // Show loading state
   g("nav-form").textContent="Loading...";
   loadScripts(function(){
     loadConfig(function(){
@@ -472,7 +473,7 @@ function loadConfig(cb){
       if(snap.exists){
         var d=snap.data();
         if(d.sections&&d.sections.length)cfg.sections=d.sections;
-        if(d.passwords){cfg.fbPassStaff=d.passwords.staff||"";cfg.fbPassAdmin=d.passwords.admin||"";}
+
         if(d.pdfCfg){
           var dp=d.pdfCfg;
           cfg.pdfCfg={
@@ -515,10 +516,8 @@ g("nav-admin").addEventListener("click",   function(){showPage("admin");});
 // FORM
 // ═══════════════════════════════════════════
 function initForm(){
-  refNum=genRef();
   selectedDateRaw=todayInputVal();
   selectedDate=fmtDateLong(selectedDateRaw);
-  g("ref-display").textContent=refNum;
   g("btn-submit").textContent="Submit & Save Return";g("btn-submit").disabled=false;
   buildFormSections();
   var rdEl=g("return-date"); if(rdEl) rdEl.value=selectedDateRaw;
@@ -678,7 +677,7 @@ g("btn-submit").addEventListener("click",function(){
   });
   if(invalidField){toast("Please Select An Option From The Dropdown: "+invalidField,false);return;}
   var data={
-    ref:refNum,
+    frt:"",
     date:firebase.firestore.FieldValue.serverTimestamp(),
     selectedDate:selectedDate,
     status:STATUS_OPTIONS[0],
@@ -699,8 +698,8 @@ g("btn-submit").addEventListener("click",function(){
   };
   data.reason=(data.fields["f-reason"]&&data.fields["f-reason"].value)||"";
   var btn=g("btn-submit");btn.textContent="Saving...";btn.disabled=true;
-  db.collection("returns").doc(refNum).set(data)
-    .then(function(){btn.textContent="Saved - Export Documents Below";toast("Return "+refNum+" Saved");})
+  db.collection("returns").add(data)
+    .then(function(){btn.textContent="Saved - Export Documents Below";toast("Return Saved");})
     .catch(function(e){toast("Error: "+e.message,false);btn.textContent="Submit & Save Return";btn.disabled=false;});
 });
 g("btn-clear").addEventListener("click",function(){
@@ -845,7 +844,7 @@ function fallbackEmail(pdfResult,subject,body){
 function emailForm(type){
   var items=getItems();
   if(!items.length){toast("Please Add At Least One Item",false);return;}
-  var fakeRec={ref:refNum,selectedDate:selectedDate,items:items,fields:{}};
+  var fakeRec={frt:"",selectedDate:selectedDate,items:items,fields:{}};
   cfg.sections.forEach(function(sec){
     if(!sec.visible||sec.isItemsSection)return;
     sec.fields.forEach(function(f){
@@ -860,8 +859,8 @@ function emailForm(type){
   var formName=type==="company"
     ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
     :(cfg.pdfCfg&&cfg.pdfCfg.rgf&&cfg.pdfCfg.rgf.formTitle||"Returned Goods Form");
-  var subject=buildEmailSubject(operator,location,product,type,refNum);
-  var body=buildEmailBody(formName,refNum,selectedDate,fakeRec,type,cfg.sections);
+  var subject=buildEmailSubject(operator,location,product,type,"");
+  var body=buildEmailBody(formName,"",selectedDate,fakeRec,type,cfg.sections);
   var pdfResult=exportPDF(fakeRec,type,cfg.sections,true);
   sendEmailWithPDF(pdfResult,subject,body);
 }
@@ -870,7 +869,7 @@ function emailFormFromRecord(rec,type){
   var operator=getRecFieldByLabel(rec,"operator")||getRecFieldByLabel(rec,"engineer")||(rec.customer&&rec.customer.name)||"";
   var location=getRecFieldByLabel(rec,"location")||"";
   var product=items.length?items[0].name:"";
-  var recRef=rec.ref||rec.id||"";
+  var recRef=rec.frt||"";
   var recDate=rec.selectedDate||fmtDateFromTs(rec.date)||"";
   var formName=type==="company"
     ?(cfg.pdfCfg&&cfg.pdfCfg.atr&&cfg.pdfCfg.atr.formTitle||"Return Request ATR Form")
@@ -884,7 +883,7 @@ function exportFromForm(type){
   var items=getItems();
   if(!items.length){toast("Please Add At Least One Item",false);return;}
   // Build record-like object from current form
-  var rec={ref:refNum,selectedDate:selectedDate,items:items,fields:{},status:STATUS_OPTIONS[0]};
+  var rec={frt:"",selectedDate:selectedDate,items:items,fields:{},status:STATUS_OPTIONS[0]};
   cfg.sections.forEach(function(sec){
     if(!sec.visible||sec.isItemsSection)return;
     sec.fields.forEach(function(f){
@@ -952,7 +951,13 @@ function renderRecordsTable(rows){
     var operator=getOperator(r)||"-";
     var location=getLocation(r)||"-";
     return'<tr>'+
-      '<td><span class="ref-tag">'+(r.ref||r.id)+'</span></td>'+
+      (function(){
+        var frtVal=r.frt||"";
+        var hasNum=/^FRT-\d{6}$/.test(frtVal);
+        var cls=hasNum?" has-number":"";
+        var display=frtVal||"FRT-";
+        return '<td><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-"></td>';
+      })()+
       '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
       '<td>'+esc(operator)+'</td>'+
       '<td>'+esc(location)+'</td>'+
@@ -960,7 +965,7 @@ function renderRecordsTable(rows){
       '<td><span class="badge s-'+sc+'">'+(r.status||STATUS_OPTIONS[0])+'</span></td>'+
       '<td><select class="stat-sel" data-id="'+r.id+'">'+opts+'</select></td>'+
       '<td><button class="view-rec-btn" data-id="'+r.id+'">View</button></td>'+
-      '<td><button class="del-rec-btn" data-id="'+r.id+'">&times;</button></td>'+
+      (isAdmin?'<td><button class="del-rec-btn" data-id="'+r.id+'">&times;</button></td>':'<td></td>')+
       '</tr>';
   }).join("");
 
@@ -1008,11 +1013,11 @@ g("records-search").addEventListener("input",function(){
   var q=g("records-search").value.trim().toLowerCase();
   if(!q){renderRecordsTable(allRecordRows);return;}
   var filtered=allRecordRows.filter(function(r){
-    var ref=(r.ref||r.id||"").toLowerCase();
+    var frtNum=(r.frt||"").toLowerCase();
     var operator=getOperator(r).toLowerCase();
     var engineer=getEngineer(r).toLowerCase();
     var location=getLocation(r).toLowerCase();
-    return ref.indexOf(q)!==-1||operator.indexOf(q)!==-1||engineer.indexOf(q)!==-1||location.indexOf(q)!==-1;
+    return frtNum.indexOf(q)!==-1||operator.indexOf(q)!==-1||engineer.indexOf(q)!==-1||location.indexOf(q)!==-1;
   });
   renderRecordsTable(filtered);
 });
@@ -1023,7 +1028,7 @@ g("btn-refresh").addEventListener("click",initRecords);
 // ═══════════════════════════════════════════
 function openDetail(rec){
   activeRecord=rec;
-  g("detail-ref").textContent=(rec.ref||rec.id);
+  g("detail-ref").textContent=(rec.frt||"No FRT Assigned");
   g("detail-meta").textContent=(rec.selectedDate||fmtDateFromTs(rec.date))+" · "+(rec.status||"");
   var body=g("detail-body"); body.innerHTML="";
 
@@ -1521,7 +1526,7 @@ function buildPdfSecRow(pc,sec,si,formKey,refresh){
 // ═══════════════════════════════════════════
 function exportPDF(rec, type, sections, returnBlob){
   var recDate=rec.selectedDate||fmtDateFromTs(rec.date)||"";
-  var recRef=rec.ref||rec.id||"";
+  var recRef=rec.frt||"";
   var items=rec.items||[];
   var pc=type==="company"?cfg.pdfCfg.atr:cfg.pdfCfg.rgf;
   if(!pc) pc=type==="company"?DEFAULT_PDF_CFG.atr:DEFAULT_PDF_CFG.rgf;
@@ -1554,8 +1559,7 @@ function exportPDF(rec, type, sections, returnBlob){
   doc.setTextColor(255,255,255);
   doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.text(pc.subtitle||"",W-m,10,{align:"right"});
   doc.setFontSize(11); doc.setFont("helvetica","bold"); doc.text(pc.formTitle||"",m,18);
-  doc.setFontSize(10); doc.setFont("helvetica","bold"); doc.text(recRef,W-m,18,{align:"right"});
-  doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.text(recDate,W-m,24,{align:"right"});
+  doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.text(recDate,W-m,18,{align:"right"});
 
   var y=36;
 
