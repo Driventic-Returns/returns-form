@@ -956,7 +956,7 @@ function renderRecordsTable(rows){
         var hasNum=/^FRT-\d{6}$/.test(frtVal);
         var cls=hasNum?" has-number":"";
         var display=frtVal||"FRT-";
-        return '<td><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-"></td>';
+        return '<td style="white-space:nowrap"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-"> <button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 9px;font-size:11px">Save</button></td>';
       })()+
       '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
       '<td>'+esc(operator)+'</td>'+
@@ -982,6 +982,51 @@ function renderRecordsTable(rows){
           var rowRec=allRecordRows.find(function(x){return x.id===sel.dataset.id;});
           if(rowRec)rowRec.status=newStatus;
         }).catch(function(e){toast(e.message,false);});
+    });
+  });
+
+  // FRT input — enforce prefix, enforce digits only
+  document.querySelectorAll(".frt-input").forEach(function(inp){
+    inp.addEventListener("focus",function(){
+      if(!inp.value.startsWith("FRT-")) inp.value="FRT-";
+    });
+    inp.addEventListener("input",function(){
+      var val=inp.value;
+      if(!val.startsWith("FRT-")) val="FRT-";
+      var digits=val.slice(4).replace(/[^0-9]/g,"").slice(0,6);
+      inp.value="FRT-"+digits;
+    });
+    inp.addEventListener("keydown",function(e){
+      if(e.key==="Enter"){
+        var btn=document.querySelector('.frt-save-btn[data-id="'+inp.dataset.id+'"]');
+        if(btn) btn.click();
+      }
+      if((e.key==="Backspace"||e.key==="Delete")&&inp.selectionStart<=4) e.preventDefault();
+    });
+  });
+
+  // FRT save buttons
+  document.querySelectorAll(".frt-save-btn").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var id=btn.dataset.id;
+      var inp=document.querySelector('.frt-input[data-id="'+id+'"]');
+      if(!inp) return;
+      if(!/^FRT-\d{6}$/.test(inp.value)){
+        toast("Please Enter A Valid 6-Digit Number After FRT-",false);
+        return;
+      }
+      btn.textContent="Saving..."; btn.disabled=true;
+      db.collection("returns").doc(id).update({frt:inp.value})
+        .then(function(){
+          inp.classList.add("has-number");
+          btn.textContent="Saved \u2713"; btn.style.background="#388e3c";
+          setTimeout(function(){btn.textContent="Save";btn.style.background="";btn.disabled=false;},2000);
+          toast("FRT Number Saved");
+        })
+        .catch(function(e){
+          toast(e.message,false);
+          btn.textContent="Save"; btn.disabled=false;
+        });
     });
   });
 
