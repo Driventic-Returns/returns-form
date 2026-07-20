@@ -48,8 +48,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .field input,.field select,.field textarea{padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;font-family:inherit;color:#111;background:#fff;outline:none;width:100%;transition:border-color .15s}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:#111}
 .field textarea{resize:vertical;min-height:68px}
-.items-hdr{display:grid;grid-template-columns:2fr 130px 130px 36px;gap:8px;padding:0 0 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;border-bottom:1px solid #f0f0f0}
-.item-row{display:grid;grid-template-columns:2fr 130px 130px 36px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0}
+.items-hdr{display:grid;grid-template-columns:2fr 130px 130px 64px 36px;gap:8px;padding:0 0 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;border-bottom:1px solid #f0f0f0}
+.item-row{display:grid;grid-template-columns:2fr 130px 130px 64px 36px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0}
 .item-row:last-child{border-bottom:none}
 .item-row input,.item-row select{padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;color:#111;width:100%;outline:none;background:#fff}
 .item-row input:focus,.item-row select:focus{border-color:#111}
@@ -163,7 +163,7 @@ tr:hover td{background:#fafafa}
 #toast.show{transform:translateX(-50%) translateY(0)}
 @media(max-width:600px){
   .g2,.g3{grid-template-columns:1fr}.reason-grid{grid-template-columns:1fr 1fr}
-  .export-grid{grid-template-columns:1fr}.items-hdr,.item-row{grid-template-columns:1fr 90px 90px 32px}
+  .export-grid{grid-template-columns:1fr}.items-hdr,.item-row{grid-template-columns:1fr 80px 80px 50px 32px}
   .topbar{padding:0 1rem}.page{padding:0 .75rem 3rem}
   .detail-head{flex-direction:column;align-items:flex-start}
   .detail-lbl{min-width:100px}
@@ -533,7 +533,7 @@ function buildFormSections(){
     head.appendChild(h2);card.appendChild(head);
     var body=document.createElement("div");body.className="card-body";
     if(sec.isItemsSection){
-      body.innerHTML='<div class="items-hdr"><div>Product</div><div>Part Number</div><div>Serial Number</div><div></div></div><div id="items-list"></div>';
+      body.innerHTML='<div class="items-hdr"><div>Product</div><div>Part Number</div><div>Serial Number</div><div>Photo</div><div></div></div><div id="items-list"></div>';
       var ab=document.createElement("button");ab.className="btn btn-ghost btn-sm";ab.style.marginTop="10px";
       ab.textContent="+ Add Item";ab.addEventListener("click",addItem);
       body.appendChild(ab);card.appendChild(body);c.appendChild(card);
@@ -631,15 +631,53 @@ function addItem(){
   prodEl.addEventListener("change",updateProgress);prodEl.addEventListener("input",updateProgress);
   var partInp=document.createElement("input");partInp.type="text";partInp.placeholder="Part Number";
   var serialInp=document.createElement("input");serialInp.type="text";serialInp.placeholder="Serial Number";
+
+  // Photo cell — works with camera on mobile, file picker on desktop
+  var photoCell=document.createElement("div");photoCell.style.cssText="display:flex;align-items:center;justify-content:center;position:relative";
+  var photoInp=document.createElement("input");photoInp.type="file";photoInp.accept="image/*";photoInp.style.display="none";
+  var photoBtn=document.createElement("button");photoBtn.type="button";photoBtn.title="Add photo";
+  photoBtn.innerHTML="&#128247;";
+  photoBtn.style.cssText="background:none;border:1px dashed #ccc;border-radius:6px;cursor:pointer;padding:4px 7px;font-size:16px;color:#aaa;transition:all .15s;width:44px;height:34px;display:flex;align-items:center;justify-content:center";
+  photoBtn.addEventListener("mouseover",function(){photoBtn.style.borderColor="#111";photoBtn.style.color="#111";});
+  photoBtn.addEventListener("mouseout",function(){if(!row.dataset.photo){photoBtn.style.borderColor="#ccc";photoBtn.style.color="#aaa";}});
+  photoBtn.addEventListener("click",function(){photoInp.click();});
+  var photoThumb=document.createElement("img");
+  photoThumb.style.cssText="display:none;width:44px;height:34px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #e0e0e0";
+  photoThumb.title="Click to change photo";
+  photoThumb.addEventListener("click",function(){photoInp.click();});
+  photoInp.addEventListener("change",function(){
+    var file=photoInp.files[0]; if(!file)return;
+    compressPhoto(file,function(b64){
+      row.dataset.photo=b64;
+      photoThumb.src=b64; photoThumb.style.display=""; photoBtn.style.display="none";
+    });
+  });
+  photoCell.appendChild(photoInp); photoCell.appendChild(photoBtn); photoCell.appendChild(photoThumb);
+
   var rmBtn=document.createElement("button");rmBtn.className="btn-rm-item";rmBtn.textContent="\xd7";
   rmBtn.addEventListener("click",function(){row.remove();updateProgress();});
-  row.appendChild(prodEl);row.appendChild(partInp);row.appendChild(serialInp);row.appendChild(rmBtn);
+  row.appendChild(prodEl);row.appendChild(partInp);row.appendChild(serialInp);row.appendChild(photoCell);row.appendChild(rmBtn);
   g("items-list").appendChild(row);updateProgress();
+}
+function compressPhoto(file,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var MAX=600,w=img.width,h=img.height;
+      if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
+      var canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+      canvas.getContext("2d").drawImage(img,0,0,w,h);
+      cb(canvas.toDataURL("image/jpeg",0.75));
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 function getItems(){
   if(!g("items-list"))return[];
   return Array.from(document.querySelectorAll("#items-list .item-row")).map(function(r){
-    var ch=r.children;return{name:ch[0].value||"",partNumber:ch[1].value||"",serialNumber:ch[2].value||""};
+    var ch=r.children;return{name:ch[0].value||"",partNumber:ch[1].value||"",serialNumber:ch[2].value||"",photo:r.dataset.photo||""};
   }).filter(function(i){return i.name;});
 }
 function getFieldValue(f){
@@ -1085,11 +1123,14 @@ function openDetail(rec){
       var title=document.createElement("div");title.className="detail-sec-title";title.textContent=sec.title;
       secDiv.appendChild(title);
       var tbl=document.createElement("table");tbl.className="detail-items-tbl";
-      tbl.innerHTML='<thead><tr><th>Product</th><th>Part Number</th><th>Serial Number</th></tr></thead>';
+      tbl.innerHTML='<thead><tr><th>Product</th><th>Part Number</th><th>Serial Number</th><th>Photo</th></tr></thead>';
       var tbody=document.createElement("tbody");
       rec.items.forEach(function(it){
         var tr=document.createElement("tr");
-        tr.innerHTML='<td>'+esc(it.name)+'</td><td>'+esc(it.partNumber||"-")+'</td><td>'+esc(it.serialNumber||"-")+'</td>';
+        var photoCell=it.photo
+          ?'<td><img src="'+it.photo+'" style="width:48px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #e0e0e0"></td>'
+          :'<td style="color:#aaa;font-size:12px">—</td>';
+        tr.innerHTML='<td>'+esc(it.name)+'</td><td>'+esc(it.partNumber||"-")+'</td><td>'+esc(it.serialNumber||"-")+'</td>'+photoCell;
         tbody.appendChild(tr);
       });
       tbl.appendChild(tbody);secDiv.appendChild(tbl);body.appendChild(secDiv);return;
@@ -1647,9 +1688,13 @@ function exportPDF(rec, type, sections, returnBlob){
       doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
       var cx=m+2; ["Product","Part Number","Serial Number"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];}); y+=7;
       items.forEach(function(it,idx){
-        doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255); doc.rect(m,y,cw,6.5,"F");
+        doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);
+        var rowH=it.photo?22:6.5;
+        doc.rect(m,y,cw,rowH,"F");
         doc.setTextColor(17,17,17); doc.setFontSize(8); doc.setFont("helvetica","normal"); cx=m+2;
-        [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];}); y+=6.5;
+        [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});
+        if(it.photo){try{doc.addImage(it.photo,"JPEG",m+cw-22,y+1,20,20);}catch(e){}}
+        y+=rowH;
       }); y+=8;
     }
 
