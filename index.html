@@ -113,6 +113,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .frt-input{padding:5px 8px;border:1px solid #e0e0e0;border-radius:4px;font-size:12px;font-family:monospace;font-weight:600;width:115px;outline:none;background:#f5f5f5;color:#999;transition:background .2s,color .2s}
 .frt-input.has-number{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7}
 .frt-input:focus{border-color:#111}
+.photo-thumb{width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #e0e0e0;cursor:pointer;transition:opacity .15s}
+.photo-thumb:hover{opacity:.85}
+.photo-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9000;display:none;align-items:center;justify-content:center;cursor:pointer}
+.photo-lightbox.open{display:flex}
+.photo-lightbox img{max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+.photo-lightbox-close{position:absolute;top:18px;right:22px;color:#fff;font-size:28px;cursor:pointer;line-height:1;opacity:.8}
+.photo-lightbox-close:hover{opacity:1}
 .rec-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
 .rec-toolbar h2{font-size:15px;font-weight:600}
 .tbl-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;overflow-x:auto}
@@ -289,6 +296,12 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
+<!-- PHOTO LIGHTBOX -->
+<div class="photo-lightbox" id="photo-lightbox">
+  <span class="photo-lightbox-close" id="photo-lightbox-close">&times;</span>
+  <img id="photo-lightbox-img" src="" alt="">
+</div>
+
 <!-- CONFIRM MODAL -->
 <div class="modal-bg" id="modal-bg">
   <div class="modal">
@@ -403,7 +416,13 @@ function confirm2(title,msg,cb){
   g("modal-title").textContent=title;g("modal-msg").textContent=msg;
   modalCb=cb;g("modal-bg").classList.add("open");
 }
-g("modal-cancel").addEventListener("click",function(){g("modal-bg").classList.remove("open");});
+function openLightbox(src){
+  g("photo-lightbox-img").src=src;
+  g("photo-lightbox").classList.add("open");
+}
+g("photo-lightbox").addEventListener("click",function(){g("photo-lightbox").classList.remove("open");});
+g("photo-lightbox-close").addEventListener("click",function(e){e.stopPropagation();g("photo-lightbox").classList.remove("open");});
+
 g("modal-confirm").addEventListener("click",function(){g("modal-bg").classList.remove("open");if(modalCb)modalCb();});
 
 // ═══════════════════════════════════════════
@@ -985,7 +1004,8 @@ function renderRecordsTable(rows){
     var opts=STATUS_OPTIONS.map(function(s){
       return'<option'+(s===r.status?" selected":"")+">"+s+"</option>";
     }).join("");
-    var itemSummary=r.items?r.items.slice(0,2).map(function(i){return i.name;}).join(", ")+(r.items.length>2?" +"+(r.items.length-2)+" more":""):"-";
+    var hasPhotos=r.items&&r.items.some(function(i){return i.photo;});
+    var itemSummary=(r.items?r.items.slice(0,2).map(function(i){return i.name;}).join(", ")+(r.items.length>2?" +"+(r.items.length-2)+" more":""):"-")+(hasPhotos?" &#128247;":"");
     var operator=getOperator(r)||"-";
     var location=getLocation(r)||"-";
     return'<tr>'+
@@ -1127,10 +1147,18 @@ function openDetail(rec){
       var tbody=document.createElement("tbody");
       rec.items.forEach(function(it){
         var tr=document.createElement("tr");
-        var photoCell=it.photo
-          ?'<td><img src="'+it.photo+'" style="width:48px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #e0e0e0"></td>'
-          :'<td style="color:#aaa;font-size:12px">—</td>';
-        tr.innerHTML='<td>'+esc(it.name)+'</td><td>'+esc(it.partNumber||"-")+'</td><td>'+esc(it.serialNumber||"-")+'</td>'+photoCell;
+        var photoTd=document.createElement("td");
+        if(it.photo){
+          var img=document.createElement("img");
+          img.src=it.photo; img.className="photo-thumb";
+          img.title="Click to view full size";
+          img.addEventListener("click",function(){openLightbox(it.photo);});
+          photoTd.appendChild(img);
+        } else {
+          photoTd.style.color="#aaa"; photoTd.style.fontSize="12px"; photoTd.textContent="—";
+        }
+        tr.innerHTML='<td>'+esc(it.name)+'</td><td>'+esc(it.partNumber||"-")+'</td><td>'+esc(it.serialNumber||"-")+'</td>';
+        tr.appendChild(photoTd);
         tbody.appendChild(tr);
       });
       tbl.appendChild(tbody);secDiv.appendChild(tbl);body.appendChild(secDiv);return;
