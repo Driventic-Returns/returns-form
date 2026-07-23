@@ -1357,9 +1357,57 @@ function enterEditMode(){
           if(!g("edit-prod-dl")){var dl=document.createElement("datalist");dl.id="edit-prod-dl";products.forEach(function(p){var o=document.createElement("option");o.value=p;dl.appendChild(o);});document.body.appendChild(dl);}
         } else { prodInp=document.createElement("input"); prodInp.type="text"; }
         prodInp.value=it.name||""; prodInp.className="detail-edit-inp"; prodInp.placeholder="Product";
-        var partInp=document.createElement("input"); partInp.type="text"; partInp.className="detail-edit-inp"; partInp.value=it.partNumber||""; partInp.placeholder="Part No. / Bus Type";
-        var serialInp=document.createElement("input"); serialInp.type="text"; serialInp.className="detail-edit-inp"; serialInp.value=it.serialNumber||""; serialInp.placeholder="Serial No. / Trans. Type";
+
+        var partInp=document.createElement("input"); partInp.type="text"; partInp.className="detail-edit-inp"; partInp.value=it.partNumber||"";
+        var serialInp=document.createElement("input"); serialInp.type="text"; serialInp.className="detail-edit-inp"; serialInp.value=it.serialNumber||"";
         var diwaSerialInp=document.createElement("input"); diwaSerialInp.type="text"; diwaSerialInp.className="detail-edit-inp"; diwaSerialInp.value=it.diwaSerial||""; diwaSerialInp.placeholder="Serial No. (DIWA)";
+
+        // DIWA dropdown logic
+        var btDlId="edit-bt-dl-"+ii; var ttDlId="edit-tt-dl-"+ii;
+        function applyEditDIWA(isDiwa, currentBusType){
+          var oldBt=document.getElementById(btDlId); if(oldBt)oldBt.remove();
+          var oldTt=document.getElementById(ttDlId); if(oldTt)oldTt.remove();
+          if(isDiwa){
+            partInp.placeholder="Select Bus Type...";
+            serialInp.placeholder="Select Transmission Type...";
+            // Bus type datalist
+            var dl1=document.createElement("datalist"); dl1.id=btDlId;
+            Object.keys(cfg.diwaMapping||{}).sort().forEach(function(bt){var o=document.createElement("option");o.value=bt;dl1.appendChild(o);});
+            document.body.appendChild(dl1); partInp.setAttribute("list",btDlId);
+            // Transmission type datalist
+            var dl2=document.createElement("datalist"); dl2.id=ttDlId;
+            document.body.appendChild(dl2); serialInp.setAttribute("list",ttDlId);
+            // Populate transmission types for current bus type
+            function filterTrans(bt){
+              var types=(cfg.diwaMapping&&cfg.diwaMapping[bt])||[];
+              dl2.innerHTML="";
+              types.forEach(function(t){var o=document.createElement("option");o.value=t;dl2.appendChild(o);});
+            }
+            if(currentBusType) filterTrans(currentBusType);
+            partInp.oninput=function(){ filterTrans(partInp.value.trim()); };
+          } else {
+            partInp.placeholder="Part No. / Bus Type"; partInp.removeAttribute("list"); partInp.oninput=null;
+            serialInp.placeholder="Serial No. / Trans. Type"; serialInp.removeAttribute("list");
+          }
+        }
+
+        var isDiwaItem=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
+        applyEditDIWA(isDiwaItem, isDiwaItem?it.partNumber:"");
+
+        // Re-apply when product changes
+        prodInp.addEventListener("input",function(){
+          var name=prodInp.value;
+          var nowDiwa=name&&name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&name.toUpperCase().indexOf("TRANSMISSION")!==-1;
+          applyEditDIWA(nowDiwa, "");
+          if(nowDiwa){partInp.value="";serialInp.value="";}
+        });
+        prodInp.addEventListener("change",function(){
+          var name=prodInp.value;
+          var nowDiwa=name&&name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&name.toUpperCase().indexOf("TRANSMISSION")!==-1;
+          applyEditDIWA(nowDiwa, "");
+          if(nowDiwa){partInp.value="";serialInp.value="";}
+        });
+
         row.appendChild(prodInp); row.appendChild(partInp); row.appendChild(serialInp); row.appendChild(diwaSerialInp);
         itemsList.appendChild(row);
       });
@@ -1399,7 +1447,7 @@ function enterEditMode(){
 function exitEditMode(){
   setDetailEditMode(false);
   // Clean up any edit datalists
-  document.querySelectorAll("[id^='edit-dl-'],[id='edit-prod-dl']").forEach(function(el){el.remove();});
+  document.querySelectorAll("[id^='edit-dl-'],[id='edit-prod-dl'],[id^='edit-bt-dl-'],[id^='edit-tt-dl-']").forEach(function(el){el.remove();});
 }
 
 function saveEditedRecord(){
