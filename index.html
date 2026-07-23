@@ -575,7 +575,7 @@ function buildFormSections(){
     head.appendChild(h2);card.appendChild(head);
     var body=document.createElement("div");body.className="card-body";
     if(sec.isItemsSection){
-      body.innerHTML='<div class="items-hdr"><div>Product</div><div>Part Number</div><div>Serial Number</div><div>Photo</div><div></div></div><div id="items-list"></div>';
+      body.innerHTML='<div class="items-hdr"><div>Product</div><div id="items-hdr-part">Part Number</div><div id="items-hdr-serial">Serial Number</div><div>Photo</div><div></div></div><div id="items-list"></div>';
       var ab=document.createElement("button");ab.className="btn btn-ghost btn-sm";ab.style.marginTop="10px";
       ab.textContent="+ Add Item";ab.addEventListener("click",addItem);
       body.appendChild(ab);card.appendChild(body);c.appendChild(card);
@@ -677,6 +677,14 @@ function addItem(){
   // DIWA mode: switches Part Number → Bus Type, Serial Number → Transmission Type
   var btListId="btl-"+id, ttListId="ttl-"+id;
   function isDiwa(name){ return name&&name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&name.toUpperCase().indexOf("TRANSMISSION")!==-1; }
+
+  function updateItemHeaders(){
+    var hasDiwa=Array.from(document.querySelectorAll("#items-list .item-row")).some(function(r){return r.dataset.diwa==="1";});
+    var hdrPart=g("items-hdr-part"); var hdrSerial=g("items-hdr-serial");
+    if(hdrPart) hdrPart.textContent=hasDiwa?"Bus Type":"Part Number";
+    if(hdrSerial) hdrSerial.textContent=hasDiwa?"Transmission Type":"Serial Number";
+  }
+
   function applyDIWAMode(on){
     var old1=document.getElementById(btListId); if(old1)old1.remove();
     var old2=document.getElementById(ttListId); if(old2)old2.remove();
@@ -690,7 +698,6 @@ function addItem(){
       document.body.appendChild(dl1); partInp.setAttribute("list",btListId);
       var dl2=document.createElement("datalist"); dl2.id=ttListId;
       document.body.appendChild(dl2); serialInp.setAttribute("list",ttListId);
-      // Filter transmissions when bus type chosen
       partInp.oninput=function(){
         var bt=partInp.value.trim();
         var types=(cfg.diwaMapping&&cfg.diwaMapping[bt])||[];
@@ -707,6 +714,7 @@ function addItem(){
       serialInp.placeholder="Serial Number"; serialInp.style.color=""; serialInp.removeAttribute("list");
     }
     partInp.value=""; serialInp.value="";
+    updateItemHeaders();
   }
   function checkDiwa(){ if(isDiwa(prodEl.value))applyDIWAMode(true); else applyDIWAMode(false); }
   prodEl.addEventListener("change",function(){checkDiwa();updateProgress();});
@@ -735,7 +743,15 @@ function addItem(){
   photoCell.appendChild(photoInp); photoCell.appendChild(photoBtn); photoCell.appendChild(photoThumb);
 
   var rmBtn=document.createElement("button");rmBtn.className="btn-rm-item";rmBtn.textContent="\xd7";
-  rmBtn.addEventListener("click",function(){row.remove();updateProgress();});
+  rmBtn.addEventListener("click",function(){
+    row.remove();
+    // Update headers in case the last DIWA row was removed
+    var hasDiwa=Array.from(document.querySelectorAll("#items-list .item-row")).some(function(r){return r.dataset.diwa==="1";});
+    var hdrPart=g("items-hdr-part"); var hdrSerial=g("items-hdr-serial");
+    if(hdrPart) hdrPart.textContent=hasDiwa?"Bus Type":"Part Number";
+    if(hdrSerial) hdrSerial.textContent=hasDiwa?"Transmission Type":"Serial Number";
+    updateProgress();
+  });
   row.appendChild(prodEl);row.appendChild(partInp);row.appendChild(serialInp);row.appendChild(photoCell);row.appendChild(rmBtn);
   g("items-list").appendChild(row);updateProgress();
 }
