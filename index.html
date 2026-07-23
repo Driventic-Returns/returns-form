@@ -255,6 +255,17 @@ tr:hover td{background:#fafafa}
         </div>
         <button class="btn btn-black btn-sm" id="btn-import-csv" style="white-space:nowrap;flex-shrink:0">Import Now</button>
       </div>
+      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:12px 14px;margin-bottom:14px">
+        <p style="font-size:13px;font-weight:600;color:#7B5E00;margin-bottom:4px">DIWA .6 Transmission — Bus Type / Transmission Type Mapping</p>
+        <p style="font-size:12px;color:#666;margin-bottom:10px">Upload a CSV with <strong>Column A = Bus Type</strong> and <strong>Column B = Transmission Type</strong>. Multiple rows with the same Bus Type create a filtered list of Transmission Types for that bus. When "DIWA .6 TRANSMISSION" is selected as a product, Part Number changes to Bus Type and Serial Number changes to a filtered Transmission Type dropdown.</p>
+        <div id="diwa-mapping-summary" style="font-size:12px;color:#888;margin-bottom:8px">No mapping loaded yet.</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+            Upload CSV <input type="file" id="diwa-csv-upload" accept=".csv,text/csv" style="display:none">
+          </label>
+          <button class="btn btn-danger btn-sm" id="btn-clear-diwa">Clear Mapping</button>
+        </div>
+      </div>
       <div class="asec-list" id="admin-sections-list"></div>
       <div class="add-sec-row">
         <input id="new-sec-title" placeholder="New Section Title...">
@@ -389,7 +400,7 @@ var DEFAULT_PDF_CFG = {
   }
 };
 
-var cfg={sections:JSON.parse(JSON.stringify(DEFAULT_SECTIONS)),fbPassStaff:"",fbPassAdmin:"",pdfCfg:JSON.parse(JSON.stringify(DEFAULT_PDF_CFG))};
+var cfg={sections:JSON.parse(JSON.stringify(DEFAULT_SECTIONS)),fbPassStaff:"",fbPassAdmin:"",pdfCfg:JSON.parse(JSON.stringify(DEFAULT_PDF_CFG)),diwaMapping:{}};
 var itemCount=0, refNum="", selectedDate="", selectedDateRaw="";
 var db=null, isAdmin=false, modalCb=null, activeRecord=null;
 
@@ -502,6 +513,7 @@ function loadConfig(cb){
       if(snap.exists){
         var d=snap.data();
         if(d.sections&&d.sections.length)cfg.sections=d.sections;
+        if(d.diwaMapping) cfg.diwaMapping=d.diwaMapping;
 
         if(d.pdfCfg){
           var dp=d.pdfCfg;
@@ -520,7 +532,8 @@ function saveConfig(cb){
   db.collection("config").doc("main").set({
     sections:cfg.sections,
     passwords:{staff:cfg.fbPassStaff||HC_STAFF,admin:cfg.fbPassAdmin||HC_ADMIN},
-    pdfCfg:cfg.pdfCfg
+    pdfCfg:cfg.pdfCfg,
+    diwaMapping:cfg.diwaMapping||{}
   }).then(function(){if(cb)cb();}).catch(function(e){toast(e.message,false);});
 }
 
@@ -657,9 +670,47 @@ function addItem(){
   } else {
     prodEl=document.createElement("input");prodEl.type="text";prodEl.placeholder="Product Name";
   }
-  prodEl.addEventListener("change",updateProgress);prodEl.addEventListener("input",updateProgress);
+
   var partInp=document.createElement("input");partInp.type="text";partInp.placeholder="Part Number";
   var serialInp=document.createElement("input");serialInp.type="text";serialInp.placeholder="Serial Number";
+
+  // DIWA mode: switches Part Number → Bus Type, Serial Number → Transmission Type
+  var btListId="btl-"+id, ttListId="ttl-"+id;
+  function isDiwa(name){ return name&&name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&name.toUpperCase().indexOf("TRANSMISSION")!==-1; }
+  function applyDIWAMode(on){
+    var old1=document.getElementById(btListId); if(old1)old1.remove();
+    var old2=document.getElementById(ttListId); if(old2)old2.remove();
+    if(on){
+      row.dataset.diwa="1";
+      partInp.placeholder="Select Bus Type..."; partInp.style.color="#111";
+      serialInp.placeholder="Select Transmission Type..."; serialInp.style.color="#999";
+      var dl1=document.createElement("datalist"); dl1.id=btListId;
+      var mapping=cfg.diwaMapping||{};
+      Object.keys(mapping).sort().forEach(function(bt){var o=document.createElement("option");o.value=bt;dl1.appendChild(o);});
+      document.body.appendChild(dl1); partInp.setAttribute("list",btListId);
+      var dl2=document.createElement("datalist"); dl2.id=ttListId;
+      document.body.appendChild(dl2); serialInp.setAttribute("list",ttListId);
+      // Filter transmissions when bus type chosen
+      partInp.oninput=function(){
+        var bt=partInp.value.trim();
+        var types=(cfg.diwaMapping&&cfg.diwaMapping[bt])||[];
+        var dl2b=document.getElementById(ttListId); if(!dl2b)return;
+        dl2b.innerHTML="";
+        types.forEach(function(t){var o=document.createElement("option");o.value=t;dl2b.appendChild(o);});
+        if(types.length>0){serialInp.style.color="#111";}
+        if(!types.some(function(t){return t===serialInp.value;})) serialInp.value="";
+        updateProgress();
+      };
+    } else {
+      row.dataset.diwa="";
+      partInp.placeholder="Part Number"; partInp.style.color=""; partInp.removeAttribute("list"); partInp.oninput=null;
+      serialInp.placeholder="Serial Number"; serialInp.style.color=""; serialInp.removeAttribute("list");
+    }
+    partInp.value=""; serialInp.value="";
+  }
+  function checkDiwa(){ if(isDiwa(prodEl.value))applyDIWAMode(true); else applyDIWAMode(false); }
+  prodEl.addEventListener("change",function(){checkDiwa();updateProgress();});
+  prodEl.addEventListener("input",function(){checkDiwa();updateProgress();});
 
   // Photo cell — works with camera on mobile, file picker on desktop
   var photoCell=document.createElement("div");photoCell.style.cssText="display:flex;align-items:center;justify-content:center;position:relative";
@@ -1153,9 +1204,12 @@ function openDetail(rec){
       var title=document.createElement("div");title.className="detail-sec-title";title.textContent=sec.title;
       secDiv.appendChild(title);
       var tbl=document.createElement("table");tbl.className="detail-items-tbl";
-      tbl.innerHTML='<thead><tr><th>Product</th><th>Part Number</th><th>Serial Number</th><th>Photo</th></tr></thead>';
+      tbl.innerHTML='<thead><tr><th>Product</th><th>Part No. / Bus Type</th><th>Serial No. / Trans. Type</th><th>Photo</th></tr></thead>';
       var tbody=document.createElement("tbody");
       rec.items.forEach(function(it){
+        var isDiwaItem=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
+        var col2lbl=isDiwaItem?"Bus Type":"Part No.";
+        var col3lbl=isDiwaItem?"Trans. Type":"Serial No.";
         var tr=document.createElement("tr");
         var photoTd=document.createElement("td");
         if(it.photo){
@@ -1167,7 +1221,7 @@ function openDetail(rec){
         } else {
           photoTd.style.color="#aaa"; photoTd.style.fontSize="12px"; photoTd.textContent="—";
         }
-        tr.innerHTML='<td>'+esc(it.name)+'</td><td>'+esc(it.partNumber||"-")+'</td><td>'+esc(it.serialNumber||"-")+'</td>';
+        tr.innerHTML='<td>'+esc(it.name)+'</td><td><span style="font-size:10px;color:#888">'+col2lbl+':</span> '+esc(it.partNumber||"-")+'</td><td><span style="font-size:10px;color:#888">'+col3lbl+':</span> '+esc(it.serialNumber||"-")+'</td>';
         tr.appendChild(photoTd);
         tbody.appendChild(tr);
       });
@@ -1243,6 +1297,7 @@ document.querySelectorAll(".atab").forEach(function(tab){
 function initAdmin(){
   renderAdminSections();
   renderPdfFormsAdmin();
+  updateDiwaSummary();
   g("pw-staff-new").value=cfg.fbPassStaff||HC_STAFF;
   g("pw-admin-new").value=cfg.fbPassAdmin||HC_ADMIN;
 }
@@ -1391,9 +1446,44 @@ g("btn-import-csv").addEventListener("click",function(){
     });
   });
   if(!updated.length){toast("No Operator or Location dropdown fields found. Make sure your fields are labelled 'Operator' and 'Location'.",false);return;}
-  saveConfig(function(){
-    renderAdminSections();buildFormSections();
-    toast("Imported into: "+updated.join(", "));
+  saveConfig(function(){renderAdminSections();buildFormSections();toast("Imported into: "+updated.join(", "));});
+});
+
+function updateDiwaSummary(){
+  var el=g("diwa-mapping-summary"); if(!el)return;
+  var m=cfg.diwaMapping||{};
+  var keys=Object.keys(m);
+  if(!keys.length){el.textContent="No mapping loaded yet.";return;}
+  var total=keys.reduce(function(n,k){return n+(m[k]||[]).length;},0);
+  el.textContent=keys.length+" bus types, "+total+" transmission type entries loaded and active.";
+  el.style.color="#7B5E00";
+}
+g("diwa-csv-upload").addEventListener("change",function(){
+  var file=this.files[0]; if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var lines=e.target.result.split(/\r?\n/);
+    var mapping={};
+    lines.forEach(function(line,i){
+      if(i===0&&(line.toLowerCase().indexOf("bus")!==-1||line.toLowerCase().indexOf("type")!==-1)) return;
+      var cols=line.split(",");
+      var bt=(cols[0]||"").trim();
+      var tt=(cols[1]||"").trim();
+      if(!bt||!tt) return;
+      if(!mapping[bt]) mapping[bt]=[];
+      if(mapping[bt].indexOf(tt)===-1) mapping[bt].push(tt);
+    });
+    Object.keys(mapping).forEach(function(k){mapping[k].sort();});
+    cfg.diwaMapping=mapping;
+    saveConfig(function(){updateDiwaSummary();toast("DIWA Mapping Loaded — "+Object.keys(mapping).length+" Bus Types");});
+    g("diwa-csv-upload").value="";
+  };
+  reader.readAsText(file);
+});
+g("btn-clear-diwa").addEventListener("click",function(){
+  confirm2("Clear DIWA Mapping","Remove the bus type / transmission type mapping?",function(){
+    cfg.diwaMapping={};
+    saveConfig(function(){updateDiwaSummary();toast("Mapping Cleared");});
   });
 });
 g("btn-save-pw").addEventListener("click",function(){
