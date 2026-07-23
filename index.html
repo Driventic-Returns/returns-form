@@ -989,7 +989,7 @@ function sendEmailWithPDF(pdfResult,subject,body){
   URL.revokeObjectURL(url);
   // Open email client with subject and body
   setTimeout(function(){
-    window.location.href="mailto:david.keyte@driventic.com,lesley.bannister@driventic.com?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+    window.location.href="mailto:uksales@driventic.com?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
     toast("PDF Downloaded \u2014 Attach It To The Email That Opens",true);
   },600);
 }
