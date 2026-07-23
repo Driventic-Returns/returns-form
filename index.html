@@ -113,6 +113,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .frt-input{padding:5px 8px;border:1px solid #e0e0e0;border-radius:4px;font-size:12px;font-family:monospace;font-weight:600;width:115px;outline:none;background:#f5f5f5;color:#999;transition:background .2s,color .2s}
 .frt-input.has-number{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7}
 .frt-input:focus{border-color:#111}
+.detail-edit-inp{width:100%;padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;color:#111;outline:none;background:#fff;box-sizing:border-box}
+.detail-edit-inp:focus{border-color:#111}
+.detail-edit-ta{width:100%;padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;color:#111;outline:none;resize:vertical;min-height:60px;box-sizing:border-box}
+.detail-edit-ta:focus{border-color:#111}
+.detail-edit-lbl{font-size:12px;color:#888;display:block;margin-bottom:3px;margin-top:8px}
+.edit-item-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:6px;margin-bottom:6px;align-items:center}
 .photo-thumb{width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #e0e0e0;cursor:pointer;transition:opacity .15s}
 .photo-thumb:hover{opacity:.85}
 .photo-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9000;display:none;align-items:center;justify-content:center;cursor:pointer}
@@ -307,6 +313,9 @@ tr:hover td{background:#fafafa}
         <button class="btn btn-outline btn-sm" id="detail-btn-custslip">&#8595; Returned Goods Form</button>
         <button class="btn btn-ghost btn-sm" id="detail-btn-email-atr">&#9993; E-mail Return Request</button>
         <button class="btn btn-ghost btn-sm" id="detail-btn-email-rgf">&#9993; E-mail Returned Goods</button>
+        <button class="btn btn-ghost btn-sm" id="detail-btn-edit" style="display:none">&#9998; Edit Record</button>
+        <button class="btn btn-black btn-sm" id="detail-btn-save" style="display:none">&#10003; Save Changes</button>
+        <button class="btn btn-ghost btn-sm" id="detail-btn-cancel-edit" style="display:none">Cancel</button>
         <button class="btn btn-ghost btn-sm" id="detail-close">Close</button>
       </div>
     </div>
@@ -1301,14 +1310,135 @@ function openDetail(rec){
   }
 
   g("detail-bg").classList.add("open");
+  setDetailEditMode(false);
 }
 function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-g("detail-close").addEventListener("click",function(){g("detail-bg").classList.remove("open");activeRecord=null;});
-g("detail-bg").addEventListener("click",function(e){if(e.target===g("detail-bg")){g("detail-bg").classList.remove("open");activeRecord=null;}});
+g("detail-close").addEventListener("click",function(){g("detail-bg").classList.remove("open");activeRecord=null;exitEditMode();});
+g("detail-bg").addEventListener("click",function(e){if(e.target===g("detail-bg")){g("detail-bg").classList.remove("open");activeRecord=null;exitEditMode();}});
 g("detail-btn-company").addEventListener("click",function(){if(activeRecord)exportPDF(activeRecord,"company",cfg.sections);});
 g("detail-btn-custslip").addEventListener("click",function(){if(activeRecord)exportPDF(activeRecord,"customer",cfg.sections);});
 g("detail-btn-email-atr").addEventListener("click",function(){if(activeRecord)emailFormFromRecord(activeRecord,"company");});
 g("detail-btn-email-rgf").addEventListener("click",function(){if(activeRecord)emailFormFromRecord(activeRecord,"customer");});
+
+g("detail-btn-edit").addEventListener("click",function(){ enterEditMode(); });
+g("detail-btn-cancel-edit").addEventListener("click",function(){ exitEditMode(); openDetail(activeRecord); });
+g("detail-btn-save").addEventListener("click",function(){ saveEditedRecord(); });
+
+function setDetailEditMode(editing){
+  g("detail-btn-edit").style.display=(!editing&&isAdmin)?"":"none";
+  g("detail-btn-save").style.display=editing?"":"none";
+  g("detail-btn-cancel-edit").style.display=editing?"":"none";
+  g("detail-btn-company").style.display=editing?"none":"";
+  g("detail-btn-custslip").style.display=editing?"none":"";
+  g("detail-btn-email-atr").style.display=editing?"none":"";
+  g("detail-btn-email-rgf").style.display=editing?"none":"";
+}
+
+function enterEditMode(){
+  var body=g("detail-body"); body.innerHTML="";
+  setDetailEditMode(true);
+
+  cfg.sections.forEach(function(sec){
+    // Items section
+    if(sec.isItemsSection){
+      var secDiv=document.createElement("div"); secDiv.className="detail-sec";
+      var t=document.createElement("div"); t.className="detail-sec-title"; t.textContent=sec.title; secDiv.appendChild(t);
+      var hdrs=document.createElement("div"); hdrs.className="edit-item-row";
+      hdrs.style.cssText="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:2px";
+      ["Product","Part No. / Bus Type","Serial No. / Trans. Type","S/N (DIWA)"].forEach(function(h){var d=document.createElement("div");d.textContent=h;hdrs.appendChild(d);});
+      secDiv.appendChild(hdrs);
+      var itemsList=document.createElement("div"); itemsList.id="edit-items-list";
+      (activeRecord.items||[]).forEach(function(it,ii){
+        var row=document.createElement("div"); row.className="edit-item-row"; row.dataset.idx=ii;
+        var products=getItemProducts();
+        var prodInp;
+        if(products.length){
+          prodInp=document.createElement("input"); prodInp.type="text"; prodInp.setAttribute("list","edit-prod-dl");
+          if(!g("edit-prod-dl")){var dl=document.createElement("datalist");dl.id="edit-prod-dl";products.forEach(function(p){var o=document.createElement("option");o.value=p;dl.appendChild(o);});document.body.appendChild(dl);}
+        } else { prodInp=document.createElement("input"); prodInp.type="text"; }
+        prodInp.value=it.name||""; prodInp.className="detail-edit-inp"; prodInp.placeholder="Product";
+        var partInp=document.createElement("input"); partInp.type="text"; partInp.className="detail-edit-inp"; partInp.value=it.partNumber||""; partInp.placeholder="Part No. / Bus Type";
+        var serialInp=document.createElement("input"); serialInp.type="text"; serialInp.className="detail-edit-inp"; serialInp.value=it.serialNumber||""; serialInp.placeholder="Serial No. / Trans. Type";
+        var diwaSerialInp=document.createElement("input"); diwaSerialInp.type="text"; diwaSerialInp.className="detail-edit-inp"; diwaSerialInp.value=it.diwaSerial||""; diwaSerialInp.placeholder="Serial No. (DIWA)";
+        row.appendChild(prodInp); row.appendChild(partInp); row.appendChild(serialInp); row.appendChild(diwaSerialInp);
+        itemsList.appendChild(row);
+      });
+      secDiv.appendChild(itemsList); body.appendChild(secDiv); return;
+    }
+
+    // Field sections
+    var secDiv=document.createElement("div"); secDiv.className="detail-sec";
+    var t=document.createElement("div"); t.className="detail-sec-title"; t.textContent=sec.title; secDiv.appendChild(t);
+    var hasField=false;
+    sec.fields.forEach(function(f){
+      var stored=activeRecord.fields&&activeRecord.fields[f.id];
+      var val=stored?stored.value||"":"";
+      var lbl=stored?stored.label:f.label;
+      var lblEl=document.createElement("label"); lblEl.className="detail-edit-lbl"; lblEl.textContent=lbl+":";
+      var inp;
+      if(f.type==="textarea"){
+        inp=document.createElement("textarea"); inp.className="detail-edit-ta";
+      } else if(f.type==="date"){
+        inp=document.createElement("input"); inp.type="date"; inp.className="detail-edit-inp";
+      } else if(f.type==="dropdown"&&f.options&&f.options.length){
+        inp=document.createElement("input"); inp.type="text"; inp.className="detail-edit-inp";
+        var dlId="edit-dl-"+f.id; var dl=document.createElement("datalist"); dl.id=dlId;
+        f.options.forEach(function(o){var op=document.createElement("option");op.value=o;dl.appendChild(op);});
+        document.body.appendChild(dl); inp.setAttribute("list",dlId);
+      } else {
+        inp=document.createElement("input"); inp.type="text"; inp.className="detail-edit-inp";
+      }
+      inp.value=val; inp.dataset.fieldId=f.id; inp.dataset.fieldLabel=lbl;
+      inp.classList.add("detail-field-inp");
+      secDiv.appendChild(lblEl); secDiv.appendChild(inp); hasField=true;
+    });
+    if(hasField) body.appendChild(secDiv);
+  });
+}
+
+function exitEditMode(){
+  setDetailEditMode(false);
+  // Clean up any edit datalists
+  document.querySelectorAll("[id^='edit-dl-'],[id='edit-prod-dl']").forEach(function(el){el.remove();});
+}
+
+function saveEditedRecord(){
+  if(!activeRecord||!db) return;
+  var updates={fields:Object.assign({},activeRecord.fields), items:[]};
+
+  // Collect field changes
+  document.querySelectorAll(".detail-field-inp").forEach(function(inp){
+    var fid=inp.dataset.fieldId; var flbl=inp.dataset.fieldLabel;
+    if(!fid) return;
+    updates.fields[fid]={label:flbl, value:inp.value};
+  });
+
+  // Update customer shortcuts
+  if(updates.fields["f-name"]) updates.customer={name:updates.fields["f-name"].value, orderNum:(updates.fields["f-order"]&&updates.fields["f-order"].value)||""};
+  if(updates.fields["f-reason"]) updates.reason=updates.fields["f-reason"].value;
+
+  // Collect item changes
+  document.querySelectorAll("#edit-items-list .edit-item-row").forEach(function(row){
+    var ch=row.children;
+    if(!ch[0].value.trim()) return;
+    updates.items.push({name:ch[0].value||"", partNumber:ch[1].value||"", serialNumber:ch[2].value||"", diwaSerial:ch[3].value||"", photo:(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo||""});
+  });
+
+  var saveBtn=g("detail-btn-save"); saveBtn.textContent="Saving..."; saveBtn.disabled=true;
+  db.collection("returns").doc(activeRecord.id).update(updates)
+    .then(function(){
+      Object.assign(activeRecord, updates);
+      toast("Record Updated");
+      exitEditMode();
+      openDetail(activeRecord);
+      // Refresh records table in background
+      if(g("page-records").style.display!=="none") initRecords();
+    })
+    .catch(function(e){
+      toast("Error: "+e.message,false);
+      saveBtn.textContent="\u2713 Save Changes"; saveBtn.disabled=false;
+    });
+}
 
 function getRecFieldByLabel(rec,keyword){
   if(!rec.fields) return "";
