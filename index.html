@@ -1868,27 +1868,53 @@ function exportPDF(rec, type, sections, returnBlob){
     else if(sec.type==="items"){
       if(!items.length) return;
       y=pSH(y,sec.title||"Items");
-      var cw2=[cw*.4,cw*.3,cw*.3];
-      doc.setFillColor(17,17,17); doc.rect(m,y,cw,7,"F");
-      doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
-      var cx=m+2; ["Product","Part Number","Serial Number"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];}); y+=7;
-      items.forEach(function(it,idx){
-        doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);
-        var rowH=it.photo?22:6.5;
-        doc.rect(m,y,cw,rowH,"F");
-        doc.setTextColor(17,17,17); doc.setFontSize(8); doc.setFont("helvetica","normal"); cx=m+2;
-        var isDiwaIt=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
-        var col2val=isDiwaIt?(it.partNumber||"-"):(it.partNumber||"-");
-        var col3val=isDiwaIt?(it.serialNumber||"-"):(it.serialNumber||"-");
-        [it.name,col2val,col3val].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});
-        // For DIWA items, print serial number on next line
-        if(isDiwaIt&&it.diwaSerial){
-          doc.setFontSize(7.5);doc.setTextColor(100,100,100);doc.text("S/N: "+it.diwaSerial,m+cw2[0]+2,y+4.5+(isDiwaIt&&it.photo?0:0));
-          doc.setFontSize(8);doc.setTextColor(17,17,17);
-        }
-        if(it.photo){try{doc.addImage(it.photo,"JPEG",m+cw-22,y+1,20,20);}catch(e){}}
-        y+=rowH;
-      }); y+=8;
+
+      // Detect if any DIWA items to determine column layout
+      var hasDiwa=items.some(function(it){return it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;});
+
+      if(hasDiwa){
+        // 4-column layout for DIWA: Product | Bus Type | Trans. Type | Serial No.
+        var photoW=22, gap=2;
+        var dataW=cw-photoW-gap; // leave space for photo on right
+        var cw4=[dataW*0.32, dataW*0.24, dataW*0.24, dataW*0.20];
+        doc.setFillColor(17,17,17); doc.rect(m,y,cw,7,"F");
+        doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont("helvetica","bold");
+        var cx=m+2; ["Product","Bus Type","Trans. Type","Serial No."].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw4[i];}); y+=7;
+        items.forEach(function(it,idx){
+          var isDiwaIt=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
+          doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);
+          var rowH=it.photo?22:8;
+          doc.rect(m,y,cw,rowH,"F");
+          doc.setTextColor(17,17,17); doc.setFontSize(7.5); doc.setFont("helvetica","normal"); cx=m+2;
+          var vals=isDiwaIt
+            ?[it.name, it.partNumber||"-", it.serialNumber||"-", it.diwaSerial||"-"]
+            :[it.name, it.partNumber||"-", "-", it.serialNumber||"-"];
+          vals.forEach(function(v,i){
+            var maxW=cw4[i]-3;
+            var lines=doc.splitTextToSize(String(v),maxW);
+            doc.text(lines[0],cx,y+5); // only first line fits in row height
+            cx+=cw4[i];
+          });
+          if(it.photo){try{doc.addImage(it.photo,"JPEG",m+cw-photoW,y+1,photoW-2,rowH-2);}catch(e){}}
+          y+=rowH;
+        });
+      } else {
+        // Standard 3-column layout: Product | Part Number | Serial Number
+        var cw2=[cw*.4,cw*.3,cw*.3];
+        doc.setFillColor(17,17,17); doc.rect(m,y,cw,7,"F");
+        doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont("helvetica","bold");
+        var cx=m+2; ["Product","Part Number","Serial Number"].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw2[i];}); y+=7;
+        items.forEach(function(it,idx){
+          doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);
+          var rowH=it.photo?22:6.5;
+          doc.rect(m,y,cw,rowH,"F");
+          doc.setTextColor(17,17,17); doc.setFontSize(8); doc.setFont("helvetica","normal"); cx=m+2;
+          [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});
+          if(it.photo){try{doc.addImage(it.photo,"JPEG",m+cw-22,y+1,20,20);}catch(e){}}
+          y+=rowH;
+        });
+      }
+      y+=8;
     }
 
     else if(sec.type==="authorisation"){
