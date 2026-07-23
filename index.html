@@ -673,6 +673,15 @@ function addItem(){
 
   var partInp=document.createElement("input");partInp.type="text";partInp.placeholder="Part Number";
   var serialInp=document.createElement("input");serialInp.type="text";serialInp.placeholder="Serial Number";
+  serialInp.setAttribute("data-role","serial");
+  // DIWA-only serial number input (stacked below transmission type)
+  var diwaSerialInp=document.createElement("input");diwaSerialInp.type="text";diwaSerialInp.placeholder="Serial Number";
+  diwaSerialInp.setAttribute("data-role","diwa-serial");
+  diwaSerialInp.style.cssText="display:none;margin-top:4px;padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;color:#111;width:100%;outline:none;background:#fff";
+  var serialWrapper=document.createElement("div");
+  serialWrapper.setAttribute("data-role","serial-cell");
+  serialWrapper.appendChild(serialInp);
+  serialWrapper.appendChild(diwaSerialInp);
 
   // DIWA mode: switches Part Number → Bus Type, Serial Number → Transmission Type
   var btListId="btl-"+id, ttListId="ttl-"+id;
@@ -692,6 +701,7 @@ function addItem(){
       row.dataset.diwa="1";
       partInp.placeholder="Select Bus Type..."; partInp.style.color="#111";
       serialInp.placeholder="Select Transmission Type..."; serialInp.style.color="#999";
+      diwaSerialInp.style.display="";
       var dl1=document.createElement("datalist"); dl1.id=btListId;
       var mapping=cfg.diwaMapping||{};
       Object.keys(mapping).sort().forEach(function(bt){var o=document.createElement("option");o.value=bt;dl1.appendChild(o);});
@@ -712,6 +722,7 @@ function addItem(){
       row.dataset.diwa="";
       partInp.placeholder="Part Number"; partInp.style.color=""; partInp.removeAttribute("list"); partInp.oninput=null;
       serialInp.placeholder="Serial Number"; serialInp.style.color=""; serialInp.removeAttribute("list");
+      diwaSerialInp.style.display="none"; diwaSerialInp.value="";
     }
     partInp.value=""; serialInp.value="";
     updateItemHeaders();
@@ -752,7 +763,7 @@ function addItem(){
     if(hdrSerial) hdrSerial.textContent=hasDiwa?"Transmission Type":"Serial Number";
     updateProgress();
   });
-  row.appendChild(prodEl);row.appendChild(partInp);row.appendChild(serialInp);row.appendChild(photoCell);row.appendChild(rmBtn);
+  row.appendChild(prodEl);row.appendChild(partInp);row.appendChild(serialWrapper);row.appendChild(photoCell);row.appendChild(rmBtn);
   g("items-list").appendChild(row);updateProgress();
 }
 function compressPhoto(file,cb){
@@ -773,7 +784,11 @@ function compressPhoto(file,cb){
 function getItems(){
   if(!g("items-list"))return[];
   return Array.from(document.querySelectorAll("#items-list .item-row")).map(function(r){
-    var ch=r.children;return{name:ch[0].value||"",partNumber:ch[1].value||"",serialNumber:ch[2].value||"",photo:r.dataset.photo||""};
+    var ch=r.children;
+    var serialCell=ch[2];
+    var serialInpEl=serialCell.querySelector?serialCell.querySelector('[data-role="serial"]'):serialCell;
+    var diwaSerialEl=serialCell.querySelector?serialCell.querySelector('[data-role="diwa-serial"]'):null;
+    return{name:ch[0].value||"",partNumber:ch[1].value||"",serialNumber:serialInpEl?serialInpEl.value||"":"",diwaSerial:diwaSerialEl?diwaSerialEl.value||"":"",photo:r.dataset.photo||""};
   }).filter(function(i){return i.name;});
 }
 function getFieldValue(f){
@@ -898,9 +913,16 @@ function buildEmailBody(formName,recRef,recDate,rec,type,formSections){
       if(!items.length) return;
       lines.push("--- "+(sec.title||"Items")+" ---");
       items.forEach(function(it){
+        var isDiwaIt=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
         var p=[it.name];
-        if(it.partNumber) p.push("Part No: "+it.partNumber);
-        if(it.serialNumber) p.push("Serial No: "+it.serialNumber);
+        if(isDiwaIt){
+          if(it.partNumber) p.push("Bus Type: "+it.partNumber);
+          if(it.serialNumber) p.push("Trans. Type: "+it.serialNumber);
+          if(it.diwaSerial) p.push("Serial No: "+it.diwaSerial);
+        } else {
+          if(it.partNumber) p.push("Part No: "+it.partNumber);
+          if(it.serialNumber) p.push("Serial No: "+it.serialNumber);
+        }
         lines.push("  "+p.join("  |  "));
       });
       lines.push("");
@@ -1237,7 +1259,8 @@ function openDetail(rec){
         } else {
           photoTd.style.color="#aaa"; photoTd.style.fontSize="12px"; photoTd.textContent="—";
         }
-        tr.innerHTML='<td>'+esc(it.name)+'</td><td><span style="font-size:10px;color:#888">'+col2lbl+':</span> '+esc(it.partNumber||"-")+'</td><td><span style="font-size:10px;color:#888">'+col3lbl+':</span> '+esc(it.serialNumber||"-")+'</td>';
+        var col3val=isDiwaItem?(esc(it.serialNumber||"-")+(it.diwaSerial?'<br><span style="font-size:11px;color:#888">S/N: </span>'+esc(it.diwaSerial):"")):(esc(it.serialNumber||"-"));
+        tr.innerHTML='<td>'+esc(it.name)+'</td><td><span style="font-size:10px;color:#888">'+col2lbl+':</span> '+esc(it.partNumber||"-")+'</td><td><span style="font-size:10px;color:#888">'+col3lbl+':</span> '+col3val+'</td>';
         tr.appendChild(photoTd);
         tbody.appendChild(tr);
       });
@@ -1854,7 +1877,15 @@ function exportPDF(rec, type, sections, returnBlob){
         var rowH=it.photo?22:6.5;
         doc.rect(m,y,cw,rowH,"F");
         doc.setTextColor(17,17,17); doc.setFontSize(8); doc.setFont("helvetica","normal"); cx=m+2;
-        [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});
+        var isDiwaIt=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
+        var col2val=isDiwaIt?(it.partNumber||"-"):(it.partNumber||"-");
+        var col3val=isDiwaIt?(it.serialNumber||"-"):(it.serialNumber||"-");
+        [it.name,col2val,col3val].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});
+        // For DIWA items, print serial number on next line
+        if(isDiwaIt&&it.diwaSerial){
+          doc.setFontSize(7.5);doc.setTextColor(100,100,100);doc.text("S/N: "+it.diwaSerial,m+cw2[0]+2,y+4.5+(isDiwaIt&&it.photo?0:0));
+          doc.setFontSize(8);doc.setTextColor(17,17,17);
+        }
         if(it.photo){try{doc.addImage(it.photo,"JPEG",m+cw-22,y+1,20,20);}catch(e){}}
         y+=rowH;
       }); y+=8;
