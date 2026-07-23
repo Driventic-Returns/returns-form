@@ -1875,24 +1875,28 @@ function exportPDF(rec, type, sections, returnBlob){
       if(hasDiwa){
         // 4-column layout for DIWA: Product | Bus Type | Trans. Type | Serial No.
         var photoW=22, gap=2;
-        var dataW=cw-photoW-gap; // leave space for photo on right
-        var cw4=[dataW*0.32, dataW*0.24, dataW*0.24, dataW*0.20];
+        var dataW=cw-photoW-gap;
+        // Wider Bus Type column to accommodate long names like "Alexander Dennis Enviro400"
+        var cw4=[dataW*0.22, dataW*0.38, dataW*0.24, dataW*0.16];
         doc.setFillColor(17,17,17); doc.rect(m,y,cw,7,"F");
         doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont("helvetica","bold");
-        var cx=m+2; ["Product","Bus Type","Trans. Type","Serial No."].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw4[i];}); y+=7;
+        var cx=m+2; ["Product","Bus Type","Transmission Type","Serial No."].forEach(function(h,i){doc.text(h,cx,y+5);cx+=cw4[i];}); y+=7;
         items.forEach(function(it,idx){
           var isDiwaIt=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
-          doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);
-          var rowH=it.photo?22:8;
-          doc.rect(m,y,cw,rowH,"F");
-          doc.setTextColor(17,17,17); doc.setFontSize(7.5); doc.setFont("helvetica","normal"); cx=m+2;
           var vals=isDiwaIt
             ?[it.name, it.partNumber||"-", it.serialNumber||"-", it.diwaSerial||"-"]
             :[it.name, it.partNumber||"-", "-", it.serialNumber||"-"];
+          // Calculate row height based on wrapped text in each column
+          doc.setFontSize(7.5); doc.setFont("helvetica","normal");
+          var maxLines=1;
+          vals.forEach(function(v,i){ var lines=doc.splitTextToSize(String(v),cw4[i]-4); if(lines.length>maxLines)maxLines=lines.length; });
+          var rowH=Math.max(it.photo?photoW:0, maxLines*5+5);
+          doc.setFillColor(idx%2===0?248:255,idx%2===0?248:255,idx%2===0?248:255);
+          doc.rect(m,y,cw,rowH,"F");
+          doc.setTextColor(17,17,17); cx=m+2;
           vals.forEach(function(v,i){
-            var maxW=cw4[i]-3;
-            var lines=doc.splitTextToSize(String(v),maxW);
-            doc.text(lines[0],cx,y+5); // only first line fits in row height
+            var lines=doc.splitTextToSize(String(v),cw4[i]-4);
+            doc.text(lines,cx,y+5);
             cx+=cw4[i];
           });
           if(it.photo){try{doc.addImage(it.photo,"JPEG",m+cw-photoW,y+1,photoW-2,rowH-2);}catch(e){}}
