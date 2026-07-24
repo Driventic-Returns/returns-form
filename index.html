@@ -2195,28 +2195,20 @@ function exportPDF(rec, type, sections, returnBlob){
   doc.setFontSize(7); doc.setTextColor(160,160,160);
   doc.text(pc.footerLeft||"Driventic UK Limited",m,288); doc.text(recDate,W-m,288,{align:"right"});
 
-  // Build descriptive filename
+  // Build filename: Form Title + FRT + serial numbers (bus type excluded for DIWA)
   function sfp(s){return(s||"").trim().replace(/[^a-zA-Z0-9]+/g,"-").replace(/^-|-$/g,"");}
-  var fOperator="",fLocation="";
-  if(rec.fields){
-    Object.keys(rec.fields).forEach(function(k){
-      var fd=rec.fields[k]; if(!fd||!fd.label||!fd.value) return;
-      var lbl=fd.label.toLowerCase();
-      if(lbl.indexOf("operator")!==-1&&!fOperator) fOperator=fd.value;
-      if(lbl.indexOf("location")!==-1&&!fLocation) fLocation=fd.value;
-    });
-  }
-  var itemParts=[];
+  var serialParts=[];
   (items||[]).forEach(function(it){
-    if(it.partNumber) itemParts.push(it.partNumber);
-    if(it.serialNumber) itemParts.push(it.serialNumber);
-    if(it.diwaSerial) itemParts.push(it.diwaSerial);
+    var isDiwaIt=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
+    // For DIWA: skip bus type (partNumber), include transmission type and serial number
+    // For others: include serial number only
+    if(!isDiwaIt&&it.serialNumber) serialParts.push(it.serialNumber);
+    if(isDiwaIt&&it.serialNumber) serialParts.push(it.serialNumber);
+    if(isDiwaIt&&it.diwaSerial) serialParts.push(it.diwaSerial);
   });
   var fnameParts=[sfp(pc.formTitle||"Form")];
   if(recRef) fnameParts.push(sfp(recRef));
-  if(fOperator) fnameParts.push(sfp(fOperator));
-  if(fLocation) fnameParts.push(sfp(fLocation));
-  if(itemParts.length) fnameParts.push(itemParts.map(sfp).filter(Boolean).join("-"));
+  if(serialParts.length) fnameParts.push(serialParts.map(sfp).filter(Boolean).join("-"));
   var fname=fnameParts.filter(Boolean).join("-")+".pdf";
 
   if(returnBlob) return {blob:doc.output("blob"), fname:fname};
