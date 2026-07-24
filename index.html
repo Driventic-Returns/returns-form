@@ -2002,50 +2002,13 @@ function exportPDF(rec, type, sections, returnBlob){
   function gv(fid){if(rec.fields&&rec.fields[fid])return rec.fields[fid].value||"";return"";}
   function gl(fid,fb){if(rec.fields&&rec.fields[fid])return rec.fields[fid].label||fb;return fb;}
 
-  // Gather header detail fields
-  var hdrOperator=getRecFieldByLabel(rec,"operator")||getRecFieldByLabel(rec,"engineer")||"";
-  var hdrLocation=getRecFieldByLabel(rec,"location")||"";
-  var hdrItems=(items||[]).map(function(it){
-    var parts=[it.name];
-    var isDiwaIt=it.name&&it.name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;
-    if(isDiwaIt){
-      if(it.partNumber) parts.push("Bus: "+it.partNumber);
-      if(it.serialNumber) parts.push("Trans: "+it.serialNumber);
-      if(it.diwaSerial) parts.push("S/N: "+it.diwaSerial);
-    } else {
-      if(it.partNumber) parts.push("P/N: "+it.partNumber);
-      if(it.serialNumber) parts.push("S/N: "+it.serialNumber);
-    }
-    return parts.join(" | ");
-  }).join("   ·   ");
-
-  // Header — expanded to fit extra info
-  doc.setFillColor(17,17,17); doc.rect(0,0,W,42,"F");
-  try{doc.addImage(logoImg,"PNG",m,5,44,15);}catch(e){}
+  // Header — logo and title only
+  doc.setFillColor(17,17,17); doc.rect(0,0,W,24,"F");
+  try{doc.addImage(logoImg,"PNG",m,4,44,15);}catch(e){}
   doc.setTextColor(255,255,255);
-  // Top-right: subtitle + FRT + date
-  doc.setFontSize(7.5); doc.setFont("helvetica","normal"); doc.text(pc.subtitle||"",W-m,9,{align:"right"});
-  if(recRef){ doc.setFontSize(10); doc.setFont("helvetica","bold"); doc.text(recRef,W-m,16,{align:"right"}); }
-  doc.setFontSize(7.5); doc.setFont("helvetica","normal"); doc.text(recDate,W-m,22,{align:"right"});
-  // Left: form title
-  doc.setFontSize(10); doc.setFont("helvetica","bold"); doc.text(pc.formTitle||"",m,22);
-  // Divider line
-  doc.setDrawColor(80,80,80); doc.setLineWidth(0.3);
-  doc.line(m,26,W-m,26);
-  doc.setLineWidth(0.2);
-  // Second row: operator | location | items
-  doc.setFontSize(7); doc.setFont("helvetica","normal"); doc.setTextColor(180,180,180);
-  if(hdrOperator){ doc.text("Operator:",m,31); doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.text(hdrOperator,m+17,31); }
-  if(hdrLocation){ doc.setFont("helvetica","normal"); doc.setTextColor(180,180,180); doc.text("Location:",m+65,31); doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.text(hdrLocation,m+82,31); }
-  // Items row
-  if(hdrItems){
-    doc.setFont("helvetica","normal"); doc.setTextColor(180,180,180); doc.text("Item(s):",m,38);
-    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold");
-    var itemsLine=doc.splitTextToSize(hdrItems,W-m*2-18);
-    doc.text(itemsLine[0],m+17,38); // first line only in header
-  }
+  doc.setFontSize(11); doc.setFont("helvetica","bold"); doc.text(pc.formTitle||"",W-m,15,{align:"right"});
   doc.setTextColor(17,17,17);
-  var y=50;
+  var y=32;
 
   pc.sections.forEach(function(sec){
     if(!sec.visible) return;
