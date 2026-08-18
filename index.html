@@ -118,7 +118,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .detail-edit-ta{width:100%;padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;color:#111;outline:none;resize:vertical;min-height:60px;box-sizing:border-box}
 .detail-edit-ta:focus{border-color:#111}
 .detail-edit-lbl{font-size:12px;color:#888;display:block;margin-bottom:3px;margin-top:8px}
-.edit-item-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:6px;margin-bottom:6px;align-items:center}
+.edit-item-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 64px;gap:6px;margin-bottom:6px;align-items:center}
 .photo-thumb{width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #e0e0e0;cursor:pointer;transition:opacity .15s}
 .photo-thumb:hover{opacity:.85}
 .photo-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9000;display:none;align-items:center;justify-content:center;cursor:pointer}
@@ -1345,7 +1345,7 @@ function enterEditMode(){
       var t=document.createElement("div"); t.className="detail-sec-title"; t.textContent=sec.title; secDiv.appendChild(t);
       var hdrs=document.createElement("div"); hdrs.className="edit-item-row";
       hdrs.style.cssText="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:2px";
-      ["Product","Part No. / Bus Type","Serial No. / Trans. Type","S/N (DIWA)"].forEach(function(h){var d=document.createElement("div");d.textContent=h;hdrs.appendChild(d);});
+      ["Product","Part No. / Bus Type","Serial No. / Trans. Type","S/N (DIWA)","Photo"].forEach(function(h){var d=document.createElement("div");d.textContent=h;hdrs.appendChild(d);});
       secDiv.appendChild(hdrs);
       var itemsList=document.createElement("div"); itemsList.id="edit-items-list";
       (activeRecord.items||[]).forEach(function(it,ii){
@@ -1408,7 +1408,50 @@ function enterEditMode(){
           if(nowDiwa){partInp.value="";serialInp.value="";}
         });
 
-        row.appendChild(prodInp); row.appendChild(partInp); row.appendChild(serialInp); row.appendChild(diwaSerialInp);
+        // Photo cell with add/remove
+        var photoCell=document.createElement("div");
+        photoCell.style.cssText="display:flex;flex-direction:column;align-items:center;gap:4px;position:relative";
+        var existingPhoto=it.photo||"";
+        row.dataset.editPhoto=existingPhoto;
+
+        var photoFileInp=document.createElement("input");photoFileInp.type="file";photoFileInp.accept="image/*";photoFileInp.style.display="none";
+
+        var photoThumbEdit=document.createElement("img");
+        photoThumbEdit.style.cssText="width:52px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e0e0e0;cursor:pointer;display:"+(existingPhoto?"block":"none");
+        if(existingPhoto) photoThumbEdit.src=existingPhoto;
+        photoThumbEdit.title="Click to change photo";
+        photoThumbEdit.addEventListener("click",function(){photoFileInp.click();});
+
+        var photoAddBtn=document.createElement("button");photoAddBtn.type="button";
+        photoAddBtn.innerHTML="&#128247;";
+        photoAddBtn.title="Add photo";
+        photoAddBtn.style.cssText="background:none;border:1px dashed #ccc;border-radius:6px;cursor:pointer;padding:4px;font-size:16px;color:#aaa;width:52px;height:40px;display:"+(existingPhoto?"none":"flex")+";align-items:center;justify-content:center";
+        photoAddBtn.addEventListener("click",function(){photoFileInp.click();});
+
+        var photoRemoveBtn=document.createElement("button");photoRemoveBtn.type="button";
+        photoRemoveBtn.textContent="\xd7";photoRemoveBtn.title="Remove photo";
+        photoRemoveBtn.style.cssText="background:#c0392b;color:#fff;border:none;border-radius:3px;font-size:11px;cursor:pointer;padding:1px 5px;display:"+(existingPhoto?"block":"none");
+        photoRemoveBtn.addEventListener("click",function(){
+          row.dataset.editPhoto="";
+          photoThumbEdit.style.display="none"; photoThumbEdit.src="";
+          photoAddBtn.style.display="flex"; photoRemoveBtn.style.display="none";
+        });
+
+        photoFileInp.addEventListener("change",function(){
+          var file=photoFileInp.files[0]; if(!file)return;
+          compressPhoto(file,function(b64){
+            row.dataset.editPhoto=b64;
+            photoThumbEdit.src=b64; photoThumbEdit.style.display="block";
+            photoAddBtn.style.display="none"; photoRemoveBtn.style.display="block";
+          });
+        });
+
+        photoCell.appendChild(photoFileInp);
+        photoCell.appendChild(photoThumbEdit);
+        photoCell.appendChild(photoAddBtn);
+        photoCell.appendChild(photoRemoveBtn);
+
+        row.appendChild(prodInp); row.appendChild(partInp); row.appendChild(serialInp); row.appendChild(diwaSerialInp); row.appendChild(photoCell);
         itemsList.appendChild(row);
       });
       secDiv.appendChild(itemsList); body.appendChild(secDiv); return;
@@ -1469,7 +1512,13 @@ function saveEditedRecord(){
   document.querySelectorAll("#edit-items-list .edit-item-row").forEach(function(row){
     var ch=row.children;
     if(!ch[0].value.trim()) return;
-    updates.items.push({name:ch[0].value||"", partNumber:ch[1].value||"", serialNumber:ch[2].value||"", diwaSerial:ch[3].value||"", photo:(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo||""});
+    updates.items.push({
+      name:ch[0].value||"",
+      partNumber:ch[1].value||"",
+      serialNumber:ch[2].value||"",
+      diwaSerial:ch[3].value||"",
+      photo:row.dataset.editPhoto!==undefined?row.dataset.editPhoto:((activeRecord.items[parseInt(row.dataset.idx)]||{}).photo||"")
+    });
   });
 
   var saveBtn=g("detail-btn-save"); saveBtn.textContent="Saving..."; saveBtn.disabled=true;
