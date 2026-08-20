@@ -1184,7 +1184,7 @@ function renderRecordsTable(rows){
         var hasNum=/^FRT-\d{6}$/.test(frtVal);
         var cls=hasNum?" has-number":"";
         var display=frtVal||"FRT-";
-        return '<td style="white-space:nowrap;display:flex;align-items:center;gap:3px"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-" style="width:105px"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 8px;font-size:11px">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;'+(frtHasSixDigits?'':'display:none')+'">&#10005;</button></td>';
+        return '<td style="white-space:nowrap;display:flex;align-items:center;gap:3px"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-" style="width:105px"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 8px;font-size:11px">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;'+(hasNum?'':'display:none')+'">&#10005;</button></td>';
       })()+
       '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
       '<td>'+esc(operator)+'</td>'+
