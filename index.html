@@ -587,7 +587,19 @@ function buildFormSections(){
       body.innerHTML='<div class="items-hdr"><div>Product</div><div id="items-hdr-part">Part Number</div><div id="items-hdr-serial">Serial Number</div><div>Photo</div><div></div></div><div id="items-list"></div>';
       var ab=document.createElement("button");ab.className="btn btn-ghost btn-sm";ab.style.marginTop="10px";
       ab.textContent="+ Add Item";ab.addEventListener("click",addItem);
-      body.appendChild(ab);card.appendChild(body);c.appendChild(card);
+      body.appendChild(ab);
+      // DIWA oil warning
+      var diwaWarn=document.createElement("div");diwaWarn.id="diwa-oil-warning";
+      diwaWarn.style.cssText="display:none;margin-top:14px;padding:14px 16px;background:#fff3cd;border:1.5px solid #f0ad4e;border-radius:8px";
+      var diwaWarnInner=document.createElement("p");
+      diwaWarnInner.style.cssText="font-size:13px;font-weight:700;color:#7B5E00;margin-bottom:10px;line-height:1.5";
+      diwaWarnInner.textContent="ALL DIRTY GEARBOXES MUST BE DRAINED OF OIL AND RETURNED IN THE ORIGINAL PACKAGING INCLUDING THE BAG AND CRATE. FAILURE TO DO THIS WILL RESULT IN COLLECTION BEING REJECTED AND CHARGES WILL APPLY. PLEASE PROVIDE IMAGES OF INSERTED BUNGS.";
+      var diwaCheckRow=document.createElement("label");diwaCheckRow.style.cssText="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#7B5E00";
+      var diwaCb=document.createElement("input");diwaCb.type="checkbox";diwaCb.id="diwa-oil-checkbox";diwaCb.style.cssText="width:16px;height:16px;accent-color:#f0ad4e;cursor:pointer";
+      diwaCheckRow.appendChild(diwaCb);diwaCheckRow.appendChild(document.createTextNode("I confirm I have read and understood the above requirements."));
+      diwaWarn.appendChild(diwaWarnInner);diwaWarn.appendChild(diwaCheckRow);
+      body.appendChild(diwaWarn);
+      card.appendChild(body);c.appendChild(card);
       itemCount=0;addItem();return;
     }
     var i=0;
@@ -740,27 +752,38 @@ function addItem(){
   prodEl.addEventListener("change",function(){checkDiwa();updateProgress();});
   prodEl.addEventListener("input",function(){checkDiwa();updateProgress();});
 
-  // Photo cell — works with camera on mobile, file picker on desktop
-  var photoCell=document.createElement("div");photoCell.style.cssText="display:flex;align-items:center;justify-content:center;position:relative";
+  // Multi-photo cell
+  var photoCell=document.createElement("div");photoCell.style.cssText="display:flex;align-items:flex-start;flex-wrap:wrap;gap:3px;min-width:64px";
+  row.dataset.photos="[]";
   var photoInp=document.createElement("input");photoInp.type="file";photoInp.accept="image/*";photoInp.style.display="none";
-  var photoBtn=document.createElement("button");photoBtn.type="button";photoBtn.title="Add photo";
-  photoBtn.innerHTML="&#128247;";
-  photoBtn.style.cssText="background:none;border:1px dashed #ccc;border-radius:6px;cursor:pointer;padding:4px 7px;font-size:16px;color:#aaa;transition:all .15s;width:44px;height:34px;display:flex;align-items:center;justify-content:center";
-  photoBtn.addEventListener("mouseover",function(){photoBtn.style.borderColor="#111";photoBtn.style.color="#111";});
-  photoBtn.addEventListener("mouseout",function(){if(!row.dataset.photo){photoBtn.style.borderColor="#ccc";photoBtn.style.color="#aaa";}});
-  photoBtn.addEventListener("click",function(){photoInp.click();});
-  var photoThumb=document.createElement("img");
-  photoThumb.style.cssText="display:none;width:44px;height:34px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #e0e0e0";
-  photoThumb.title="Click to change photo";
-  photoThumb.addEventListener("click",function(){photoInp.click();});
+  photoCell.appendChild(photoInp);
+  function renderItemPhotos(){
+    // remove all except the file input
+    while(photoCell.children.length>1) photoCell.removeChild(photoCell.lastChild);
+    var arr=[]; try{arr=JSON.parse(row.dataset.photos);}catch(e){}
+    arr.forEach(function(src,pi){
+      var wrap=document.createElement("div");wrap.style.cssText="position:relative;flex-shrink:0";
+      var img=document.createElement("img");img.src=src;img.style.cssText="width:36px;height:28px;object-fit:cover;border-radius:4px;border:1px solid #e0e0e0;cursor:pointer;display:block";
+      img.addEventListener("click",function(){openLightbox(src);});
+      var rm=document.createElement("button");rm.type="button";rm.textContent="×";
+      rm.style.cssText="position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:#c0392b;color:#fff;border:none;cursor:pointer;font-size:9px;padding:0;line-height:14px;text-align:center";
+      rm.addEventListener("click",function(e){e.stopPropagation();var a=JSON.parse(row.dataset.photos);a.splice(pi,1);row.dataset.photos=JSON.stringify(a);renderItemPhotos();});
+      wrap.appendChild(img);wrap.appendChild(rm);photoCell.appendChild(wrap);
+    });
+    var addBtn=document.createElement("button");addBtn.type="button";addBtn.innerHTML="&#128247;";addBtn.title="Add photo";
+    addBtn.style.cssText="background:none;border:1px dashed #ccc;border-radius:4px;cursor:pointer;font-size:14px;color:#aaa;width:36px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0";
+    addBtn.addEventListener("click",function(){photoInp.click();});
+    photoCell.appendChild(addBtn);
+  }
   photoInp.addEventListener("change",function(){
     var file=photoInp.files[0]; if(!file)return;
     compressPhoto(file,function(b64){
-      row.dataset.photo=b64;
-      photoThumb.src=b64; photoThumb.style.display=""; photoBtn.style.display="none";
+      var arr=[]; try{arr=JSON.parse(row.dataset.photos);}catch(e){}
+      arr.push(b64); row.dataset.photos=JSON.stringify(arr);
+      renderItemPhotos(); photoInp.value="";
     });
   });
-  photoCell.appendChild(photoInp); photoCell.appendChild(photoBtn); photoCell.appendChild(photoThumb);
+  renderItemPhotos();
 
   var rmBtn=document.createElement("button");rmBtn.className="btn-rm-item";rmBtn.textContent="\xd7";
   rmBtn.addEventListener("click",function(){
@@ -797,7 +820,8 @@ function getItems(){
     var serialCell=ch[2];
     var serialInpEl=serialCell.querySelector?serialCell.querySelector('[data-role="serial"]'):serialCell;
     var diwaSerialEl=serialCell.querySelector?serialCell.querySelector('[data-role="diwa-serial"]'):null;
-    return{name:ch[0].value||"",partNumber:ch[1].value||"",serialNumber:serialInpEl?serialInpEl.value||"":"",diwaSerial:diwaSerialEl?diwaSerialEl.value||"":"",photo:r.dataset.photo||""};
+    var photosArr=[]; try{photosArr=JSON.parse(r.dataset.photos||"[]");}catch(e){} if(!photosArr.length&&r.dataset.photo) photosArr=[r.dataset.photo];
+    return{name:ch[0].value||"",partNumber:ch[1].value||"",serialNumber:serialInpEl?serialInpEl.value||"":"",diwaSerial:diwaSerialEl?diwaSerialEl.value||"":"",photos:photosArr};
   }).filter(function(i){return i.name;});
 }
 function getFieldValue(f){
@@ -810,6 +834,16 @@ function updateProgress(){
     sec.fields.forEach(function(f){total++;if(getFieldValue(f).trim())filled++;});
   });
   g("prog").style.width=(total?Math.round(filled/total*100):0)+"%";
+  updateDiwaWarning();
+}
+function updateDiwaWarning(){
+  var warn=g("diwa-oil-warning"); if(!warn) return;
+  var hasDiwaWarn=Array.from(document.querySelectorAll("#items-list .item-row")).some(function(r){
+    var name=(r.children[0]?r.children[0].value||"": "").toUpperCase();
+    return name.indexOf("DIWA .6")!==-1||name.indexOf("DIWA NXT")!==-1;
+  });
+  warn.style.display=hasDiwaWarn?"":"none";
+  if(!hasDiwaWarn){var cb=g("diwa-oil-checkbox");if(cb)cb.checked=false;}
 }
 
 // SUBMIT
@@ -817,6 +851,26 @@ g("btn-submit").addEventListener("click",function(){
   var items=getItems();
   if(!items.length){toast("Please Add At Least One Item",false);return;}
   if(!db){toast("Still Connecting...",false);return;}
+  // Check DIWA oil warning checkbox
+  var diwaCb=g("diwa-oil-checkbox");
+  if(diwaCb&&g("diwa-oil-warning")&&g("diwa-oil-warning").style.display!=="none"&&!diwaCb.checked){
+    toast("Please Confirm The Oil Drainage Requirements Before Submitting",false);
+    g("diwa-oil-warning").style.boxShadow="0 0 0 3px rgba(240,173,78,.5)";
+    setTimeout(function(){if(g("diwa-oil-warning"))g("diwa-oil-warning").style.boxShadow="";},2000);
+    return;
+  }
+  // Check required fields (all except Additional Notes / notes fields)
+  var missingField=null;
+  cfg.sections.forEach(function(sec){
+    if(!sec.visible||sec.isItemsSection||missingField)return;
+    sec.fields.forEach(function(f){
+      if(missingField)return;
+      var lbl=f.label.toLowerCase();
+      if(lbl.indexOf("additional")!==-1||lbl.indexOf("notes")!==-1||f.type==="textarea")return;
+      if(!getFieldValue(f).trim()) missingField=f.label;
+    });
+  });
+  if(missingField){toast("Please Fill In: "+missingField,false);return;}
   // Validate all dropdown fields have a valid option selected
   var invalidField=null;
   cfg.sections.forEach(function(sec){
@@ -1112,7 +1166,7 @@ function renderRecordsTable(rows){
     var opts=STATUS_OPTIONS.map(function(s){
       return'<option'+(s===r.status?" selected":"")+">"+s+"</option>";
     }).join("");
-    var hasPhotos=r.items&&r.items.some(function(i){return i.photo;});
+    var hasPhotos=r.items&&r.items.some(function(i){return (i.photos&&i.photos.length)||i.photo;});
     var itemSummary=(r.items?r.items.slice(0,2).map(function(i){return i.name;}).join(", ")+(r.items.length>2?" +"+(r.items.length-2)+" more":""):"-")+(hasPhotos?" &#128247;":"");
     var operator=getOperator(r)||"-";
     var location=getLocation(r)||"-";
@@ -1122,7 +1176,7 @@ function renderRecordsTable(rows){
         var hasNum=/^FRT-\d{6}$/.test(frtVal);
         var cls=hasNum?" has-number":"";
         var display=frtVal||"FRT-";
-        return '<td style="white-space:nowrap"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-"> <button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 9px;font-size:11px">Save</button></td>';
+        return '<td style="white-space:nowrap;display:flex;align-items:center;gap:3px"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-" style="width:105px"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 8px;font-size:11px">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;'+(frtHasSixDigits?'':'display:none')+'">&#10005;</button></td>';
       })()+
       '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
       '<td>'+esc(operator)+'</td>'+
@@ -1259,12 +1313,16 @@ function openDetail(rec){
         var col3lbl=isDiwaItem?"Trans. Type":"Serial No.";
         var tr=document.createElement("tr");
         var photoTd=document.createElement("td");
-        if(it.photo){
-          var img=document.createElement("img");
-          img.src=it.photo; img.className="photo-thumb";
-          img.title="Click to view full size";
-          img.addEventListener("click",function(){openLightbox(it.photo);});
-          photoTd.appendChild(img);
+        var photosArr=it.photos||(it.photo?[it.photo]:[]);
+        if(photosArr.length){
+          var pwrap=document.createElement("div");pwrap.style.cssText="display:flex;flex-wrap:wrap;gap:4px";
+          photosArr.forEach(function(src){
+            var img=document.createElement("img");img.src=src;img.className="photo-thumb";
+            img.title="Click to view full size";
+            img.addEventListener("click",(function(s){return function(){openLightbox(s);};})(src));
+            pwrap.appendChild(img);
+          });
+          photoTd.appendChild(pwrap);
         } else {
           photoTd.style.color="#aaa"; photoTd.style.fontSize="12px"; photoTd.textContent="—";
         }
@@ -1411,45 +1469,38 @@ function enterEditMode(){
         // Photo cell with add/remove
         var photoCell=document.createElement("div");
         photoCell.style.cssText="display:flex;flex-direction:column;align-items:center;gap:4px;position:relative";
-        var existingPhoto=it.photo||"";
-        row.dataset.editPhoto=existingPhoto;
+        var existingPhoto=""; var photosArrEdit=it.photos||(it.photo?[it.photo]:[]);
+        row.dataset.editPhotos=JSON.stringify(photosArrEdit);
 
         var photoFileInp=document.createElement("input");photoFileInp.type="file";photoFileInp.accept="image/*";photoFileInp.style.display="none";
 
-        var photoThumbEdit=document.createElement("img");
-        photoThumbEdit.style.cssText="width:52px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e0e0e0;cursor:pointer;display:"+(existingPhoto?"block":"none");
-        if(existingPhoto) photoThumbEdit.src=existingPhoto;
-        photoThumbEdit.title="Click to change photo";
-        photoThumbEdit.addEventListener("click",function(){photoFileInp.click();});
-
-        var photoAddBtn=document.createElement("button");photoAddBtn.type="button";
-        photoAddBtn.innerHTML="&#128247;";
-        photoAddBtn.title="Add photo";
-        photoAddBtn.style.cssText="background:none;border:1px dashed #ccc;border-radius:6px;cursor:pointer;padding:4px;font-size:16px;color:#aaa;width:52px;height:40px;display:"+(existingPhoto?"none":"flex")+";align-items:center;justify-content:center";
-        photoAddBtn.addEventListener("click",function(){photoFileInp.click();});
-
-        var photoRemoveBtn=document.createElement("button");photoRemoveBtn.type="button";
-        photoRemoveBtn.textContent="\xd7";photoRemoveBtn.title="Remove photo";
-        photoRemoveBtn.style.cssText="background:#c0392b;color:#fff;border:none;border-radius:3px;font-size:11px;cursor:pointer;padding:1px 5px;display:"+(existingPhoto?"block":"none");
-        photoRemoveBtn.addEventListener("click",function(){
-          row.dataset.editPhoto="";
-          photoThumbEdit.style.display="none"; photoThumbEdit.src="";
-          photoAddBtn.style.display="flex"; photoRemoveBtn.style.display="none";
-        });
-
+        function renderEditPhotos(){
+          while(photoCell.children.length>1) photoCell.removeChild(photoCell.lastChild);
+          var arr=[]; try{arr=JSON.parse(row.dataset.editPhotos||"[]");}catch(e){}
+          arr.forEach(function(src,pi){
+            var wrap=document.createElement("div");wrap.style.cssText="position:relative;flex-shrink:0";
+            var img=document.createElement("img");img.src=src;img.style.cssText="width:44px;height:34px;object-fit:cover;border-radius:4px;border:1px solid #e0e0e0;cursor:pointer;display:block";
+            img.addEventListener("click",(function(s){return function(){openLightbox(s);};})(src));
+            var rm=document.createElement("button");rm.type="button";rm.textContent="\xd7";
+            rm.style.cssText="position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:#c0392b;color:#fff;border:none;cursor:pointer;font-size:9px;padding:0;line-height:14px;text-align:center";
+            rm.addEventListener("click",function(e){e.stopPropagation();var a=JSON.parse(row.dataset.editPhotos);a.splice(pi,1);row.dataset.editPhotos=JSON.stringify(a);renderEditPhotos();});
+            wrap.appendChild(img);wrap.appendChild(rm);photoCell.appendChild(wrap);
+          });
+          var addBtn2=document.createElement("button");addBtn2.type="button";addBtn2.innerHTML="&#128247;";addBtn2.title="Add Photo";
+          addBtn2.style.cssText="background:none;border:1px dashed #ccc;border-radius:6px;cursor:pointer;font-size:15px;color:#aaa;width:44px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0";
+          addBtn2.addEventListener("click",function(){photoFileInp.click();});
+          photoCell.appendChild(addBtn2);
+        }
         photoFileInp.addEventListener("change",function(){
           var file=photoFileInp.files[0]; if(!file)return;
           compressPhoto(file,function(b64){
-            row.dataset.editPhoto=b64;
-            photoThumbEdit.src=b64; photoThumbEdit.style.display="block";
-            photoAddBtn.style.display="none"; photoRemoveBtn.style.display="block";
+            var arr=[]; try{arr=JSON.parse(row.dataset.editPhotos||"[]");}catch(e){}
+            arr.push(b64); row.dataset.editPhotos=JSON.stringify(arr);
+            renderEditPhotos(); photoFileInp.value="";
           });
         });
-
         photoCell.appendChild(photoFileInp);
-        photoCell.appendChild(photoThumbEdit);
-        photoCell.appendChild(photoAddBtn);
-        photoCell.appendChild(photoRemoveBtn);
+        renderEditPhotos();
 
         row.appendChild(prodInp); row.appendChild(partInp); row.appendChild(serialInp); row.appendChild(diwaSerialInp); row.appendChild(photoCell);
         itemsList.appendChild(row);
@@ -1517,7 +1568,7 @@ function saveEditedRecord(){
       partNumber:ch[1].value||"",
       serialNumber:ch[2].value||"",
       diwaSerial:ch[3].value||"",
-      photo:row.dataset.editPhoto!==undefined?row.dataset.editPhoto:((activeRecord.items[parseInt(row.dataset.idx)]||{}).photo||"")
+      photos:(function(){var a=[];try{a=JSON.parse(row.dataset.editPhotos||"[]");}catch(e){}return a.length?a:(activeRecord.items[parseInt(row.dataset.idx)]||{}).photos||(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo?[(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo]:[];})()
     });
   });
 
@@ -2124,7 +2175,10 @@ function exportPDF(rec, type, sections, returnBlob){
             doc.text(lines,cx,y+5);
             cx+=cw4[i];
           });
-          if(it.photo){try{doc.addImage(it.photo,"JPEG",m+cw-photoW,y+1,photoW-2,rowH-2);}catch(e){}}
+          var pArr=it.photos||(it.photo?[it.photo]:[]);
+          if(pArr.length){
+            var pW=Math.floor((photoW-2)/Math.min(pArr.length,3))-2;
+            pArr.slice(0,3).forEach(function(src,pi){try{doc.addImage(src,"JPEG",m+cw-photoW+(pW+2)*pi,y+1,pW,rowH-2);}catch(e){}}); }
           y+=rowH;
         });
       } else {
@@ -2139,7 +2193,8 @@ function exportPDF(rec, type, sections, returnBlob){
           doc.rect(m,y,cw,rowH,"F");
           doc.setTextColor(17,17,17); doc.setFontSize(8); doc.setFont("helvetica","normal"); cx=m+2;
           [it.name,it.partNumber||"-",it.serialNumber||"-"].forEach(function(v,i){doc.text(String(v),cx,y+4.5);cx+=cw2[i];});
-          if(it.photo){try{doc.addImage(it.photo,"JPEG",m+cw-22,y+1,20,20);}catch(e){}}
+          var pArr2=it.photos||(it.photo?[it.photo]:[]);
+          if(pArr2.length){var pW2=Math.floor(20/Math.min(pArr2.length,3))-1;pArr2.slice(0,3).forEach(function(src,pi){try{doc.addImage(src,"JPEG",m+cw-22+(pW2+1)*pi,y+1,pW2,rowH-2);}catch(e){}});}
           y+=rowH;
         });
       }
