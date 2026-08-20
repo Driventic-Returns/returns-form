@@ -870,7 +870,7 @@ g("btn-submit").addEventListener("click",function(){
       if(!getFieldValue(f).trim()) missingField=f.label;
     });
   });
-  if(missingField){toast("Please Fill In: "+missingField,false);return;}
+  if(missingField){toast("Please Ensure All Return Fields Are Completed",false);return;}
   // Validate all dropdown fields have a valid option selected
   var invalidField=null;
   cfg.sections.forEach(function(sec){
