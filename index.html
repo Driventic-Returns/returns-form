@@ -215,7 +215,7 @@ tr:hover td{background:#fafafa}
     <div id="form-sections-container"></div>
     <div class="actions">
       <div class="act-title">Save &amp; Export</div>
-      <button class="btn btn-black btn-full" id="btn-submit" style="margin-bottom:10px">Submit &amp; Save Return</button>
+      <button class="btn btn-black btn-full" id="btn-submit" style="margin-bottom:10px">Save &amp; Email Return</button>
       <div class="export-grid">
         <button class="btn btn-black btn-full" id="btn-company">&#8595; Return Request ATR Form</button>
         <button class="btn btn-outline btn-full" id="btn-custslip">&#8595; Returned Goods Form</button>
@@ -569,7 +569,7 @@ g("nav-admin").addEventListener("click",   function(){showPage("admin");});
 function initForm(){
   selectedDateRaw=todayInputVal();
   selectedDate=fmtDateLong(selectedDateRaw);
-  g("btn-submit").textContent="Submit & Save Return";g("btn-submit").disabled=false;
+  g("btn-submit").textContent="Save & Email Return";g("btn-submit").disabled=false;
   buildFormSections();
   var rdEl=g("return-date"); if(rdEl) rdEl.value=selectedDateRaw;
   updateProgress();
@@ -911,8 +911,16 @@ g("btn-submit").addEventListener("click",function(){
   data.reason=(data.fields["f-reason"]&&data.fields["f-reason"].value)||"";
   var btn=g("btn-submit");btn.textContent="Saving...";btn.disabled=true;
   db.collection("returns").add(data)
-    .then(function(){btn.textContent="Saved - Export Documents Below";toast("Return Saved");})
-    .catch(function(e){toast("Error: "+e.message,false);btn.textContent="Submit & Save Return";btn.disabled=false;});
+    .then(function(){
+      btn.textContent="Saved — Opening Email...";
+      toast("Return Saved");
+      // Trigger the Return Request email
+      setTimeout(function(){
+        emailForm("company");
+        btn.textContent="Save & Email Return"; btn.disabled=false;
+      },600);
+    })
+    .catch(function(e){toast("Error: "+e.message,false);btn.textContent="Save & Email Return";btn.disabled=false;});
 });
 g("btn-clear").addEventListener("click",function(){
   if(!confirm("Clear all data and start a new return?"))return;initForm();
@@ -1052,7 +1060,7 @@ function sendEmailWithPDF(pdfResult,subject,body){
   URL.revokeObjectURL(url);
   // Open email client with subject and body
   setTimeout(function(){
-    window.location.href="mailto:uksales@driventic.com?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+    window.location.href="mailto:uksales@driventic.com,James.Berry@driventic.com?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
     toast("PDF Downloaded \u2014 Attach It To The Email That Opens",true);
   },600);
 }
