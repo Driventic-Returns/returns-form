@@ -1264,7 +1264,7 @@ g("btn-refresh-tracking").addEventListener("click",initTracking);
 
 function renderTrackingMap(rows){
   var el=g("tracking-map"); if(!el) return;
-  el.style.height="420px";
+  el.style.height="440px";
 
   var counts={};
   STATUS_OPTIONS.forEach(function(s){counts[s]=0;});
@@ -1272,54 +1272,90 @@ function renderTrackingMap(rows){
 
   function doRender(){
     var L=window.L;
-    // Destroy previous map instance if exists
     if(window._trackingMap){window._trackingMap.remove();window._trackingMap=null;}
 
-    var map=L.map(el,{scrollWheelZoom:false}).setView([52,4],5);
+    var map=L.map(el,{scrollWheelZoom:false}).setView([52,3],5);
     window._trackingMap=map;
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
       attribution:'&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',maxZoom:18
     }).addTo(map);
 
+    // ── Custom marker icon ──────────────────────────────────────────
     function divIcon(count,bg,border,textCol,label,sub){
       return L.divIcon({
         className:'',
-        html:'<div style="text-align:center;width:68px">'+
-          '<div style="width:44px;height:44px;border-radius:50%;background:'+bg+';border:3px solid '+border+
-          ';display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 3px 10px rgba(0,0,0,.25)">'+
-          '<span style="font-size:17px;font-weight:700;color:'+textCol+'">'+count+'</span></div>'+
-          '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:6px;padding:3px 5px;margin-top:4px;white-space:nowrap">'+
+        html:'<div style="text-align:center;width:72px">'+
+          '<div style="width:44px;height:44px;border-radius:50%;background:'+bg+
+          ';border:3px solid '+border+';display:flex;align-items:center;justify-content:center;'+
+          'margin:0 auto;box-shadow:0 3px 10px rgba(0,0,0,.28)">'+
+          '<span style="font-size:16px;font-weight:700;color:'+textCol+'">'+count+'</span></div>'+
+          '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:6px;'+
+          'padding:3px 5px;margin-top:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.15)">'+
           '<div style="font-size:9.5px;font-weight:700;color:'+textCol+'">'+label+'</div>'+
           '<div style="font-size:8.5px;color:'+textCol+';opacity:.8">'+sub+'</div></div></div>',
-        iconSize:[68,80],iconAnchor:[34,22]
+        iconSize:[72,82],iconAnchor:[36,22]
       });
     }
 
-    // Markers — actual geographic coordinates
-    // UK depots (general UK midlands area)
-    L.marker([53.5,-1.5],{icon:divIcon(counts[STATUS_OPTIONS[0]],'#FEF9E7','#F0AD4E','#9A6C0A','UK Depots','Dispatched')}).addTo(map);
-    // Southam, Warwickshire — actual lat/lng
-    L.marker([52.257,-1.497],{icon:divIcon(counts[STATUS_OPTIONS[1]],'#EBF5FB','#1A5276','#1A5276','Southam, UK','Driventic UK')}).addTo(map);
-    // Driventic GmbH — Germany
-    L.marker([51.34,12.37],{icon:divIcon(counts[STATUS_OPTIONS[3]],'#EAFAF1','#97C459','#1E8449','Driventic GmbH','Germany')}).addTo(map);
-
-    // Transit route: Southam → via Channel → Germany
-    var routePts=[[52.257,-1.497],[51.5,1.2],[51.2,4.0],[51.34,12.37]];
-
-    if(counts[STATUS_OPTIONS[2]]>0){
-      // Animated ant-path if plugin loaded, else animated CSS polyline
-      if(window.L.AntPath){
-        L.AntPath(routePts,{color:'#1A5276',weight:3,delay:800,dashArray:[15,25],opacity:0.85,pulseColor:'#85B7EB'}).addTo(map);
-      } else {
-        L.polyline(routePts,{color:'#1A5276',weight:3,dashArray:'10 8',opacity:0.8}).addTo(map);
-      }
-      // Badge on transit line midpoint (North Sea area)
-      var badge=L.divIcon({className:'',html:'<div style="background:#1A5276;color:#fff;border-radius:99px;padding:5px 12px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)">'+counts[STATUS_OPTIONS[2]]+' in transit</div>',iconSize:[110,28],iconAnchor:[55,14]});
-      L.marker([51.4,5.0],{icon:badge}).addTo(map);
-    } else {
-      L.polyline(routePts,{color:'#94a3b8',weight:2,dashArray:'6 5',opacity:0.4}).addTo(map);
+    // ── Transit badge icon ──────────────────────────────────────────
+    function badgeIcon(text,bg){
+      return L.divIcon({
+        className:'',
+        html:'<div style="background:'+bg+';color:#fff;border-radius:99px;padding:5px 12px;'+
+          'font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)">'+text+'</div>',
+        iconSize:[130,28],iconAnchor:[65,14]
+      });
     }
+
+    // ── Coordinates ─────────────────────────────────────────────────
+    // UK depot origin (Leeds/Manchester — represents UK depot network)
+    var depotLat=53.8, depotLng=-1.55;
+    // Southam, Warwickshire (actual)
+    var southamLat=52.257, southamLng=-1.497;
+    // Heidenheim an der Brenz, Germany (actual)
+    var gmbhLat=48.676, gmbhLng=10.154;
+
+    // ── Route 1: UK Depots → Southam (inbound to Southam) ──────────
+    var ukRoute=[[depotLat,depotLng],[53.2,-1.6],[52.8,-1.55],[southamLat,southamLng]];
+    if(counts[STATUS_OPTIONS[0]]>0){
+      if(window.L.AntPath){
+        L.AntPath(ukRoute,{color:'#9A6C0A',weight:3,delay:1200,dashArray:[12,20],opacity:0.8,pulseColor:'#F0AD4E'}).addTo(map);
+      } else {
+        L.polyline(ukRoute,{color:'#9A6C0A',weight:2.5,dashArray:'10 7',opacity:0.75}).addTo(map);
+      }
+      // Badge at midpoint of UK route — offset west to avoid Southam marker
+      L.marker([53.0,-2.3],{icon:badgeIcon(counts[STATUS_OPTIONS[0]]+' inbound to Southam','#9A6C0A')}).addTo(map);
+      // Small depot origin dot
+      L.circleMarker([depotLat,depotLng],{radius:7,color:'#F0AD4E',fillColor:'#FEF9E7',fillOpacity:1,weight:2}).bindTooltip('UK Depot Network').addTo(map);
+    } else {
+      L.polyline(ukRoute,{color:'#94a3b8',weight:1.5,dashArray:'5 5',opacity:0.35}).addTo(map);
+      L.circleMarker([depotLat,depotLng],{radius:5,color:'#ccc',fillColor:'#f5f5f5',fillOpacity:1,weight:1.5}).bindTooltip('UK Depot Network').addTo(map);
+    }
+
+    // ── Southam fixed marker ────────────────────────────────────────
+    L.marker([southamLat,southamLng],{
+      icon:divIcon(counts[STATUS_OPTIONS[1]],'#EBF5FB','#1A5276','#1A5276','Driventic UK','Southam, Warwickshire')
+    }).addTo(map);
+
+    // ── Route 2: Southam → Heidenheim (cross-channel transit) ───────
+    var euRoute=[[southamLat,southamLng],[51.5,1.1],[51.0,4.0],[50.2,7.2],[49.2,9.0],[gmbhLat,gmbhLng]];
+    if(counts[STATUS_OPTIONS[2]]>0){
+      if(window.L.AntPath){
+        L.AntPath(euRoute,{color:'#1A5276',weight:3,delay:900,dashArray:[14,22],opacity:0.85,pulseColor:'#85B7EB'}).addTo(map);
+      } else {
+        L.polyline(euRoute,{color:'#1A5276',weight:3,dashArray:'10 8',opacity:0.8}).addTo(map);
+      }
+      // Badge positioned over Belgium/Netherlands to avoid overlap
+      L.marker([50.8,4.2],{icon:badgeIcon(counts[STATUS_OPTIONS[2]]+' in transit to GmbH','#1A5276')}).addTo(map);
+    } else {
+      L.polyline(euRoute,{color:'#94a3b8',weight:1.5,dashArray:'5 5',opacity:0.35}).addTo(map);
+    }
+
+    // ── Heidenheim GmbH marker ──────────────────────────────────────
+    L.marker([gmbhLat,gmbhLng],{
+      icon:divIcon(counts[STATUS_OPTIONS[3]],'#EAFAF1','#97C459','#1E8449','Driventic GmbH','Germany / Austria')
+    }).addTo(map);
   }
 
   function loadAntPath(){
