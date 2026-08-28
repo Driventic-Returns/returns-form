@@ -234,8 +234,18 @@ tr:hover td{background:#fafafa}
       <h2>Return Records</h2>
       <button class="btn btn-ghost" id="btn-refresh">&#8635; Refresh</button>
     </div>
-    <div class="field" style="margin-bottom:14px">
-      <input type="text" id="records-search" placeholder="Search by reference, operator, location, or engineer...">
+    <div class="field" style="margin-bottom:14px;display:flex;gap:8px;align-items:center">
+      <select id="records-search-field" style="padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;outline:none;flex-shrink:0;color:#111">
+        <option value="all">All Fields</option>
+        <option value="frt">FRT</option>
+        <option value="operator">Operator</option>
+        <option value="engineer">Engineer</option>
+        <option value="location">Location</option>
+        <option value="item">Item</option>
+        <option value="part">Part Number</option>
+        <option value="serial">Serial Number</option>
+      </select>
+      <input type="text" id="records-search" placeholder="Search..." style="flex:1">
     </div>
     <div class="tbl-wrap">
       <table>
@@ -1282,18 +1292,33 @@ function renderRecordsTable(rows){
   });
 }
 
-g("records-search").addEventListener("input",function(){
+function runRecordsSearch(){
   var q=g("records-search").value.trim().toLowerCase();
+  var field=g("records-search-field").value;
   if(!q){renderRecordsTable(allRecordRows);return;}
   var filtered=allRecordRows.filter(function(r){
     var frtNum=(r.frt||"").toLowerCase();
     var operator=getOperator(r).toLowerCase();
     var engineer=getEngineer(r).toLowerCase();
     var location=getLocation(r).toLowerCase();
-    return frtNum.indexOf(q)!==-1||operator.indexOf(q)!==-1||engineer.indexOf(q)!==-1||location.indexOf(q)!==-1;
+    var itemStr=(r.items||[]).map(function(it){return it.name||"";}).join(" ").toLowerCase();
+    var partStr=(r.items||[]).map(function(it){return it.partNumber||"";}).join(" ").toLowerCase();
+    var serialStr=(r.items||[]).map(function(it){return [it.serialNumber||"",it.diwaSerial||""].join(" ");}).join(" ").toLowerCase();
+    switch(field){
+      case "frt":      return frtNum.indexOf(q)!==-1;
+      case "operator": return operator.indexOf(q)!==-1;
+      case "engineer": return engineer.indexOf(q)!==-1;
+      case "location": return location.indexOf(q)!==-1;
+      case "item":     return itemStr.indexOf(q)!==-1;
+      case "part":     return partStr.indexOf(q)!==-1;
+      case "serial":   return serialStr.indexOf(q)!==-1;
+      default:         return frtNum.indexOf(q)!==-1||operator.indexOf(q)!==-1||engineer.indexOf(q)!==-1||location.indexOf(q)!==-1||itemStr.indexOf(q)!==-1||partStr.indexOf(q)!==-1||serialStr.indexOf(q)!==-1;
+    }
   });
   renderRecordsTable(filtered);
-});
+}
+g("records-search").addEventListener("input",runRecordsSearch);
+g("records-search-field").addEventListener("change",runRecordsSearch);
 g("btn-refresh").addEventListener("click",initRecords);
 
 // ═══════════════════════════════════════════
