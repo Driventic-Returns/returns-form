@@ -1264,106 +1264,83 @@ g("btn-refresh-tracking").addEventListener("click",initTracking);
 
 function renderTrackingMap(rows){
   var el=g("tracking-map"); if(!el) return;
+  el.style.height="420px";
+
   var counts={};
   STATUS_OPTIONS.forEach(function(s){counts[s]=0;});
   rows.forEach(function(r){if(counts[r.status]!==undefined)counts[r.status]++;});
-  var c0=counts[STATUS_OPTIONS[0]]; // dispatched from depot
-  var c1=counts[STATUS_OPTIONS[1]]; // at Driventic UK
-  var c2=counts[STATUS_OPTIONS[2]]; // dispatched from UK
-  var c3=counts[STATUS_OPTIONS[3]]; // at GmbH
 
-  // Key coordinates
-  var depotX=105,depotY=105;      // UK depots (general UK)
-  var southamX=155,southamY=158;  // Southam, Warwickshire
-  var transitX=330,transitY=215;  // English Channel / transit midpoint
-  var gmbhX=500,gmbhY=148;       // Germany/Austria
+  function doRender(){
+    var L=window.L;
+    // Destroy previous map instance if exists
+    if(window._trackingMap){window._trackingMap.remove();window._trackingMap=null;}
 
-  var svg='<svg width="100%" viewBox="0 0 680 340" style="display:block">';
-  svg+='<defs>';
-  svg+='<marker id="marr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>';
-  svg+='<style>';
-  svg+='@keyframes dash{to{stroke-dashoffset:-24}}';
-  svg+='.transit-line{stroke-dasharray:8 6;animation:dash 1.8s linear infinite}';
-  svg+='@keyframes pulse{0%,100%{r:9;opacity:.7}50%{r:12;opacity:.4}}';
-  svg+='.pulse{animation:pulse 2s ease-in-out infinite}';
-  svg+='</style></defs>';
+    var map=L.map(el,{scrollWheelZoom:false}).setView([52,4],5);
+    window._trackingMap=map;
 
-  // Sea background
-  svg+='<rect width="680" height="340" fill="#d4e8f7"/>';
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',maxZoom:18
+    }).addTo(map);
 
-  // UK landmass (simplified polygon)
-  svg+='<path d="M58,20 L82,14 L110,18 L128,28 L142,45 L150,72 L158,105 L162,140 L160,175 L152,200 L138,218 L118,228 L96,222 L78,205 L65,185 L56,162 L52,138 L48,108 L50,75 L54,48 Z" fill="#c8d6a0" stroke="#8fa060" stroke-width="1.2"/>';
-  // Wales bump
-  svg+='<path d="M65,155 L48,148 L38,162 L42,178 L58,180 Z" fill="#c8d6a0" stroke="#8fa060" stroke-width="1.2"/>';
-  // Scotland
-  svg+='<path d="M82,14 L94,4 L108,2 L118,10 L122,22 L110,18 Z" fill="#c8d6a0" stroke="#8fa060" stroke-width="1.2"/>';
-  // UK label
-  svg+='<text x="105" y="270" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#4a6030" opacity="0.8">United Kingdom</text>';
+    function divIcon(count,bg,border,textCol,label,sub){
+      return L.divIcon({
+        className:'',
+        html:'<div style="text-align:center;width:68px">'+
+          '<div style="width:44px;height:44px;border-radius:50%;background:'+bg+';border:3px solid '+border+
+          ';display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 3px 10px rgba(0,0,0,.25)">'+
+          '<span style="font-size:17px;font-weight:700;color:'+textCol+'">'+count+'</span></div>'+
+          '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:6px;padding:3px 5px;margin-top:4px;white-space:nowrap">'+
+          '<div style="font-size:9.5px;font-weight:700;color:'+textCol+'">'+label+'</div>'+
+          '<div style="font-size:8.5px;color:'+textCol+';opacity:.8">'+sub+'</div></div></div>',
+        iconSize:[68,80],iconAnchor:[34,22]
+      });
+    }
 
-  // Continental Europe (simplified)
-  svg+='<path d="M215,15 L640,15 L660,340 L440,340 L280,310 L210,240 L205,150 Z" fill="#d4c9a0" stroke="#9a8c60" stroke-width="1.2"/>';
-  // Germany/Austria highlight
-  svg+='<path d="M355,80 L475,68 L530,90 L545,148 L535,210 L490,245 L430,252 L370,238 L340,195 L342,135 Z" fill="#b8b070" stroke="#7a7040" stroke-width="1" opacity="0.6"/>';
-  svg+='<text x="452" y="175" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#5a4a10" opacity="0.9">Germany /</text>';
-  svg+='<text x="452" y="188" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#5a4a10" opacity="0.9">Austria</text>';
-  // Europe label
-  svg+='<text x="580" y="60" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#6a5a20" opacity="0.7">Europe</text>';
+    // Markers — actual geographic coordinates
+    // UK depots (general UK midlands area)
+    L.marker([53.5,-1.5],{icon:divIcon(counts[STATUS_OPTIONS[0]],'#FEF9E7','#F0AD4E','#9A6C0A','UK Depots','Dispatched')}).addTo(map);
+    // Southam, Warwickshire — actual lat/lng
+    L.marker([52.257,-1.497],{icon:divIcon(counts[STATUS_OPTIONS[1]],'#EBF5FB','#1A5276','#1A5276','Southam, UK','Driventic UK')}).addTo(map);
+    // Driventic GmbH — Germany
+    L.marker([51.34,12.37],{icon:divIcon(counts[STATUS_OPTIONS[3]],'#EAFAF1','#97C459','#1E8449','Driventic GmbH','Germany')}).addTo(map);
 
-  // English Channel label
-  svg+='<text x="248" y="245" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#5580a0" opacity="0.8" transform="rotate(-8,248,245)">English Channel</text>';
+    // Transit route: Southam → via Channel → Germany
+    var routePts=[[52.257,-1.497],[51.5,1.2],[51.2,4.0],[51.34,12.37]];
 
-  // === TRANSIT LINE (Southam → GmbH) ===
-  var transitPath='M'+southamX+','+southamY+' C 220,190 380,200 '+gmbhX+','+gmbhY;
-  if(c2>0){
-    svg+='<path d="'+transitPath+'" fill="none" stroke="#1A5276" stroke-width="2" opacity="0.5" class="transit-line"/>';
-    // Moving dot on path
-    svg+='<circle r="5" fill="#1A5276" opacity="0.8"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#tpath"/></animateMotion></circle>';
-    svg+='<path id="tpath" d="'+transitPath+'" fill="none"/>';
-  } else {
-    svg+='<path d="'+transitPath+'" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.4"/>';
+    if(counts[STATUS_OPTIONS[2]]>0){
+      // Animated ant-path if plugin loaded, else animated CSS polyline
+      if(window.L.AntPath){
+        L.AntPath(routePts,{color:'#1A5276',weight:3,delay:800,dashArray:[15,25],opacity:0.85,pulseColor:'#85B7EB'}).addTo(map);
+      } else {
+        L.polyline(routePts,{color:'#1A5276',weight:3,dashArray:'10 8',opacity:0.8}).addTo(map);
+      }
+      // Badge on transit line midpoint (North Sea area)
+      var badge=L.divIcon({className:'',html:'<div style="background:#1A5276;color:#fff;border-radius:99px;padding:5px 12px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)">'+counts[STATUS_OPTIONS[2]]+' in transit</div>',iconSize:[110,28],iconAnchor:[55,14]});
+      L.marker([51.4,5.0],{icon:badge}).addTo(map);
+    } else {
+      L.polyline(routePts,{color:'#94a3b8',weight:2,dashArray:'6 5',opacity:0.4}).addTo(map);
+    }
   }
 
-  // === MARKER HELPER ===
-  function marker(x,y,color,border,textCol,label,sublabel,count,pulseIt){
-    var s='';
-    if(pulseIt&&count>0) s+='<circle cx="'+x+'" cy="'+y+'" r="9" fill="'+color+'" opacity="0.35" class="pulse"/>';
-    s+='<circle cx="'+x+'" cy="'+y+'" r="18" fill="'+color+'" stroke="'+border+'" stroke-width="2" opacity="0.95"/>';
-    s+='<text x="'+x+'" y="'+(y+5)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="700" fill="'+textCol+'">'+count+'</text>';
-    // Label box
-    s+='<rect x="'+(x-40)+'" y="'+(y+24)+'" width="80" height="28" rx="5" fill="'+color+'" stroke="'+border+'" stroke-width="1" opacity="0.9"/>';
-    s+='<text x="'+x+'" y="'+(y+35)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="'+textCol+'">'+label+'</text>';
-    s+='<text x="'+x+'" y="'+(y+46)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="8.5" fill="'+textCol+'" opacity="0.85">'+sublabel+'</text>';
-    return s;
+  function loadAntPath(){
+    if(window.L.AntPath){doRender();return;}
+    var ap=document.createElement('script');
+    ap.src='https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js';
+    ap.onload=doRender; ap.onerror=doRender;
+    document.head.appendChild(ap);
   }
 
-  // UK Depots (general)
-  svg+=marker(depotX,depotY,'#FEF9E7','#F0AD4E','#9A6C0A','Depot','Dispatched',c0,false);
-  // Southam
-  svg+=marker(southamX,southamY,'#EBF5FB','#85B7EB','#1A5276','Southam','Driventic UK',c1,true);
-  // GmbH
-  svg+=marker(gmbhX,gmbhY,'#EAFAF1','#97C459','#1E8449','GmbH','Germany/Austria',c3,true);
-
-  // In-transit count badge (on the line)
-  if(c2>0){
-    svg+='<rect x="'+(transitX-28)+'" y="'+(transitY-14)+'" width="56" height="26" rx="6" fill="#1A5276" stroke="#0C447C" stroke-width="1.5"/>';
-    svg+='<text x="'+transitX+'" y="'+(transitY+1)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#fff">'+c2+' in transit</text>';
+  if(window.L){loadAntPath();return;}
+  if(!document.getElementById('leaflet-css')){
+    var css=document.createElement('link');
+    css.id='leaflet-css';css.rel='stylesheet';
+    css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(css);
   }
-
-  // Arrow from depot to Southam
-  svg+='<line x1="'+(depotX+19)+'" y1="'+(depotY+5)+'" x2="'+(southamX-19)+'" y2="'+(southamY-5)+'" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#marr)"/>';
-
-  // Legend
-  var lx=580,ly=220;
-  svg+='<rect x="'+(lx-8)+'" y="'+(ly-16)+'" width="94" height="108" rx="8" fill="rgba(255,255,255,0.85)" stroke="#e0e0e0" stroke-width="1"/>';
-  svg+='<text x="'+lx+'" y="'+ly+'" font-family="system-ui,sans-serif" font-size="10" font-weight="600" fill="#333">Legend</text>';
-  [[c0,'#F0AD4E','At depot'],[c1,'#85B7EB','At UK'],[c2,'#1A5276','In transit'],[c3,'#97C459','At GmbH']].forEach(function(item,i){
-    var ly2=ly+18+(i*20);
-    svg+='<circle cx="'+(lx-2)+'" cy="'+(ly2-4)+'" r="6" fill="'+item[1]+'"/>';
-    svg+='<text x="'+(lx+10)+'" y="'+ly2+'" font-family="system-ui,sans-serif" font-size="10" fill="#444">'+item[2]+' ('+item[0]+')</text>';
-  });
-
-  svg+='</svg>';
-  el.innerHTML=svg;
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  s.onload=loadAntPath;
+  document.head.appendChild(s);
 }
 
 function renderRecordsTable(rows){
