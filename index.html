@@ -204,6 +204,7 @@ tr:hover td{background:#fafafa}
     <div class="topbar-nav">
       <button class="nav-btn active" id="nav-form">New Return</button>
       <button class="nav-btn" id="nav-records">Records</button>
+      <button class="nav-btn" id="nav-tracking">Tracking</button>
       <button class="nav-btn" id="nav-admin">Admin</button>
     </div>
 
@@ -226,6 +227,16 @@ tr:hover td{background:#fafafa}
       </div>
       <button class="btn btn-ghost btn-full" id="btn-clear" style="margin-top:8px">&#8635; Clear &amp; Start New Return</button>
     </div>
+  </div>
+
+  <!-- TRACKING PAGE -->
+  <div id="page-tracking" class="page" style="display:none">
+    <div class="rec-toolbar">
+      <h2>Return Tracking</h2>
+      <button class="btn btn-ghost" id="btn-refresh-tracking">&#8635; Refresh</button>
+    </div>
+    <div id="tracking-visual" style="margin-bottom:24px"></div>
+    <p id="tracking-empty" style="font-size:13px;color:#888;display:none">No records found.</p>
   </div>
 
   <!-- RECORDS PAGE -->
@@ -560,18 +571,20 @@ function saveConfig(cb){
 // NAV
 // ═══════════════════════════════════════════
 function showPage(page){
-  ["form","records","admin"].forEach(function(p){
+  ["form","records","tracking","admin"].forEach(function(p){
     g("page-"+p).style.display=p===page?"":"none";
     g("nav-"+p).classList.toggle("active",p===page);
   });
   g("nav-admin").style.display=isAdmin?"":"none";
-  if(page==="form")    initForm();
-  if(page==="records") initRecords();
-  if(page==="admin")   initAdmin();
+  if(page==="form")     initForm();
+  if(page==="records")  initRecords();
+  if(page==="tracking") initTracking();
+  if(page==="admin")    initAdmin();
 }
-g("nav-form").addEventListener("click",    function(){showPage("form");});
-g("nav-records").addEventListener("click", function(){showPage("records");});
-g("nav-admin").addEventListener("click",   function(){showPage("admin");});
+g("nav-form").addEventListener("click",     function(){showPage("form");});
+g("nav-records").addEventListener("click",  function(){showPage("records");});
+g("nav-tracking").addEventListener("click", function(){showPage("tracking");});
+g("nav-admin").addEventListener("click",    function(){showPage("admin");});
 
 // ═══════════════════════════════════════════
 // FORM
@@ -1173,6 +1186,79 @@ function initRecords(){
     g("records-body").innerHTML='<tr><td colspan="9" style="padding:16px;color:#c0392b">Error: '+e.message+'</td></tr>';
   });
 }
+
+function renderTrackingVisual(rows){
+  var el=g("tracking-visual"); if(!el) return;
+  var counts={};
+  STATUS_OPTIONS.forEach(function(s){counts[s]=0;});
+  rows.forEach(function(r){ if(counts[r.status]!==undefined) counts[r.status]++; });
+
+  var stages=[
+    {label:"Dispatched\nFrom Depot",   sub:"At Depot",         status:STATUS_OPTIONS[0], bg:"#FEF9E7",border:"#F0AD4E",text:"#9A6C0A", icon:"🏭"},
+    {label:"Received At\nDriventic UK",sub:"Southam, UK",      status:STATUS_OPTIONS[1], bg:"#EBF5FB",border:"#85B7EB",text:"#1A5276", icon:"🏢"},
+    {label:"Dispatched\nFrom UK",      sub:"En route to Europe",status:STATUS_OPTIONS[2], bg:"#1A5276",border:"#0C447C",text:"#ffffff", icon:"🚚"},
+    {label:"Received At\nGmbH",        sub:"Germany / Austria", status:STATUS_OPTIONS[3], bg:"#EAFAF1",border:"#97C459",text:"#1E8449", icon:"🇩🇪"}
+  ];
+
+  var total=rows.length;
+  var svgW=820, boxW=160, boxH=90, gap=46, startX=20, y=24;
+  var svgH=boxH+80;
+
+  var svg='<svg width="100%" viewBox="0 0 '+svgW+' '+svgH+'" style="display:block;overflow:visible">';
+  svg+='<defs><marker id="tarr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>';
+
+  stages.forEach(function(st,i){
+    var x=startX+i*(boxW+gap);
+    var cnt=counts[st.status];
+    var pct=total>0?Math.round(cnt/total*100):0;
+
+    // Arrow between stages
+    if(i>0){
+      var ax=x-gap+4, ay=y+boxH/2;
+      var prevX=startX+(i-1)*(boxW+gap)+boxW;
+      svg+='<line x1="'+(prevX+4)+'" y1="'+ay+'" x2="'+(ax+gap-8)+'" y2="'+ay+'" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#tarr)"/>';
+    }
+
+    // Box
+    svg+='<rect x="'+x+'" y="'+y+'" width="'+boxW+'" height="'+boxH+'" rx="10" fill="'+st.bg+'" stroke="'+st.border+'" stroke-width="1.5"/>';
+
+    // Count (large)
+    svg+='<text x="'+(x+boxW/2)+'" y="'+(y+36)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" font-weight="700" fill="'+st.text+'">'+cnt+'</text>';
+
+    // Label lines
+    var lines=st.label.split('\n');
+    svg+='<text x="'+(x+boxW/2)+'" y="'+(y+58)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="'+st.text+'" opacity="0.85">'+lines[0]+'</text>';
+    if(lines[1]) svg+='<text x="'+(x+boxW/2)+'" y="'+(y+70)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="'+st.text+'" opacity="0.85">'+lines[1]+'</text>';
+
+    // Sub label (location)
+    svg+='<text x="'+(x+boxW/2)+'" y="'+(y+83)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="'+st.text+'" opacity="0.6">'+st.sub+'</text>';
+
+    // Progress bar at bottom
+    var barY=y+boxH+10, barW=boxW-16, barX=x+8;
+    svg+='<rect x="'+barX+'" y="'+barY+'" width="'+barW+'" height="5" rx="2.5" fill="#e2e8f0"/>';
+    if(pct>0) svg+='<rect x="'+barX+'" y="'+barY+'" width="'+Math.round(barW*pct/100)+'" height="5" rx="2.5" fill="'+st.border+'"/>';
+    svg+='<text x="'+(x+boxW/2)+'" y="'+(barY+16)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#64748b">'+pct+'% of total</text>';
+  });
+
+  // Total label
+  svg+='<text x="'+(startX+stages.length*(boxW+gap)-gap+8)+'" y="'+(y+boxH+28)+'" font-family="system-ui,sans-serif" font-size="10" fill="#94a3b8">'+total+' total</text>';
+
+  svg+='</svg>';
+  el.innerHTML=svg;
+}
+
+function initTracking(){
+  if(!db){toast("Connecting...",false);return;}
+  var el=g("tracking-visual"); if(el) el.innerHTML='<p style="font-size:13px;color:#888;padding:20px 0">Loading...</p>';
+  db.collection("returns").get().then(function(snap){
+    var rows=[]; snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
+    renderTrackingVisual(rows);
+    var empty=g("tracking-empty"); if(empty) empty.style.display=rows.length?"none":"";
+  }).catch(function(e){
+    var el=g("tracking-visual"); if(el) el.innerHTML='<p style="color:#c0392b;font-size:13px">Error: '+e.message+'</p>';
+  });
+}
+g("btn-refresh-tracking").addEventListener("click",initTracking);
 
 function renderRecordsTable(rows){
   if(!rows.length){
