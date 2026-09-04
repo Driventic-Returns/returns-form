@@ -2372,9 +2372,20 @@ function exportPDF(rec, type, sections, returnBlob){
           doc.setTextColor(100,100,100); doc.text(lbl+":",m,y); doc.setTextColor(17,17,17);
           var lines=doc.splitTextToSize(v,cw-44); doc.text(lines,m+44,y); y+=lines.length*5+2; i++;
         } else {
-          var nx=allowedFields[i+1]; var nxv=nx?gv(nx.id):"";
-          if(nx&&nx.type!=="textarea"&&nxv){y=pRW(y,lbl+":",v,gl(nx.id,nx.label)+":",nxv);i+=2;}
-          else{y=pRW(y,lbl+":",v);i++;}
+          doc.setFontSize(8); doc.setFont("helvetica","normal");
+          var lblW=doc.getTextWidth(lbl+":");
+          if(lblW>50){
+            // Long label — render full width on one line (label then value after)
+            doc.setTextColor(100,100,100); doc.text(lbl+":",m,y);
+            doc.setTextColor(17,17,17);
+            var vStr=String(v||"-");
+            var vLines=doc.splitTextToSize(vStr,cw-lblW-4);
+            doc.text(vLines[0],m+lblW+4,y); y+=6; i++;
+          } else {
+            var nx=allowedFields[i+1]; var nxv=nx?gv(nx.id):"";
+            if(nx&&nx.type!=="textarea"&&nxv){y=pRW(y,lbl+":",v,gl(nx.id,nx.label)+":",nxv);i+=2;}
+            else{y=pRW(y,lbl+":",v);i++;}
+          }
         }
       }
       y+=4;
