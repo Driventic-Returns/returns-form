@@ -661,16 +661,11 @@ function loadSRList(){
       if(Array.isArray(arr)) arr.forEach(function(v){if(v)srNumbers.push(String(v));});
     }
     srNumbers=srNumbers.filter(Boolean).sort();
+    window._srOptions=srNumbers;
 
-    // Create/update global SR datalist
-    var dl=document.getElementById("sr-global-datalist");
-    if(!dl){dl=document.createElement("datalist");dl.id="sr-global-datalist";document.body.appendChild(dl);}
-    dl.innerHTML="";
-    srNumbers.forEach(function(sr){var o=document.createElement("option");o.value=sr;dl.appendChild(o);});
-
-    // Wire to any already-rendered SR fields
+    // Wire to any already-rendered SR fields (update panel sources)
     document.querySelectorAll("[data-sr-field]").forEach(function(inp){
-      inp.setAttribute("list","sr-global-datalist");
+      inp.removeAttribute("list"); // remove old datalist reference
     });
 
     console.log("SR list loaded: "+srNumbers.length+" entries");
@@ -753,6 +748,63 @@ function buildFormSections(){
     card.appendChild(body);c.appendChild(card);
   });
 }
+// ── Custom dropdown panel (replaces datalist — works on iOS/Android) ──────────
+function attachDropdownPanel(inp, getOptionsFn, allowFreeText){
+  var panel=document.createElement("div");
+  panel.style.cssText="display:none;position:fixed;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:9999;max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch;min-width:160px";
+  document.body.appendChild(panel);
+
+  function pos(){
+    var r=inp.getBoundingClientRect();
+    var spaceBelow=window.innerHeight-r.bottom;
+    if(spaceBelow<160&&r.top>160){
+      panel.style.top="";panel.style.bottom=(window.innerHeight-r.top+2)+"px";
+    } else {
+      panel.style.bottom="";panel.style.top=(r.bottom+window.scrollY+2)+"px";
+    }
+    panel.style.left=r.left+"px";
+    panel.style.width=Math.max(r.width,180)+"px";
+  }
+
+  function render(q){
+    var opts=getOptionsFn()||[];
+    var filtered=q?opts.filter(function(o){return o.toLowerCase().indexOf(q.toLowerCase())!==-1;}):opts;
+    panel.innerHTML="";
+    filtered.slice(0,80).forEach(function(opt){
+      var item=document.createElement("div");
+      item.textContent=opt;
+      item.style.cssText="padding:11px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:background .1s";
+      function pick(e){e.preventDefault();e.stopPropagation();inp.value=opt;inp.style.borderColor="";inp.style.background="";close();inp.dispatchEvent(new Event("input"));updateProgress();}
+      item.addEventListener("mousedown",pick);
+      item.addEventListener("touchend",pick);
+      item.addEventListener("mouseover",function(){item.style.background="#f0faf9";});
+      item.addEventListener("mouseout",function(){item.style.background="";});
+      panel.appendChild(item);
+    });
+    if(!filtered.length){var nd=document.createElement("div");nd.textContent="No matches";nd.style.cssText="padding:10px 14px;color:#aaa;font-size:13px";panel.appendChild(nd);}
+  }
+
+  function open(){pos();render(inp.value);panel.style.display="";}
+  function close(){panel.style.display="none";}
+
+  inp.addEventListener("focus",open);
+  inp.addEventListener("input",function(){render(inp.value);pos();panel.style.display="";});
+  inp.addEventListener("blur",function(){
+    setTimeout(close,250);
+    if(!allowFreeText){
+      var opts=getOptionsFn()||[];
+      var val=inp.value.trim();
+      if(val&&opts.indexOf(val)===-1){inp.style.borderColor="#c0392b";inp.style.background="#fff8f8";}
+      else{inp.style.borderColor="";inp.style.background="";}
+    }
+    updateProgress();
+  });
+  // Close on outside tap (mobile)
+  document.addEventListener("touchstart",function(e){if(!panel.contains(e.target)&&e.target!==inp)close();},{passive:true});
+
+  return{close:close,refresh:function(){if(panel.style.display!=="none")render(inp.value);}};
+}
+
 function makeFieldEl(f){
   var div=document.createElement("div");div.className="field";
   var lbl=document.createElement("label");lbl.textContent=f.label;lbl.setAttribute("for",f.id);div.appendChild(lbl);
@@ -765,32 +817,16 @@ function makeFieldEl(f){
     di.addEventListener("change",updateProgress);div.appendChild(di);
   } else if(f.type==="dropdown"){
     var isSRField=(/\bsr\b/i.test(f.label)&&/number|num|no\b/i.test(f.label));
-    var listId=isSRField?"sr-global-datalist":"dl-"+f.id;
     var dinp=document.createElement("input");dinp.type="text";dinp.id=f.id;
-    dinp.placeholder=isSRField?"Type or search SR number...":"Type Or Choose...";
-    dinp.setAttribute("list",listId);dinp.setAttribute("autocomplete","off");
-    if(isSRField) dinp.setAttribute("data-sr-field","true");
+    dinp.placeholder=isSRField?"Search SR number...":"Select or type to filter...";
+    dinp.setAttribute("autocomplete","off");dinp.setAttribute("readonly","readonly");
+    dinp.style.cursor="pointer";
+    if(isSRField){dinp.removeAttribute("readonly");dinp.setAttribute("data-sr-field","true");}
+    // Remove readonly on first keypress so typing filters
+    dinp.addEventListener("keydown",function(){dinp.removeAttribute("readonly");});
+    var ddOpts=isSRField?[]:f.options||[];
+    attachDropdownPanel(dinp,function(){return isSRField?(window._srOptions||[]):ddOpts;},isSRField);
     dinp.addEventListener("input",updateProgress);
-    dinp.addEventListener("blur",function(){
-      if(isSRField) return; // SR field accepts any value from live list
-      var val=dinp.value.trim();
-      var opts=f.options||[];
-      if(val && opts.indexOf(val)===-1){
-        dinp.style.borderColor="#c0392b";
-        dinp.style.background="#fff8f8";
-        dinp.title="Please Select An Option From The Dropdown List";
-      } else {
-        dinp.style.borderColor="";
-        dinp.style.background="";
-        dinp.title="";
-      }
-      updateProgress();
-    });
-    if(!isSRField){
-      var dl=document.createElement("datalist");dl.id=listId;
-      (f.options||[]).forEach(function(opt){var o=document.createElement("option");o.value=opt;dl.appendChild(o);});
-      div.appendChild(dl);
-    }
     div.appendChild(dinp);
   } else {
     var inp=document.createElement("input");inp.type="text";inp.id=f.id;inp.placeholder=f.placeholder||"";
@@ -835,34 +871,36 @@ function addItem(){
     if(hdrSerial) hdrSerial.textContent=hasDiwa?"Transmission Type":"Serial Number";
   }
 
+  var _btPanel=null, _ttPanel=null;
   function applyDIWAMode(on){
-    var old1=document.getElementById(btListId); if(old1)old1.remove();
-    var old2=document.getElementById(ttListId); if(old2)old2.remove();
+    if(_btPanel){_btPanel.close();} if(_ttPanel){_ttPanel.close();}
     if(on){
       row.dataset.diwa="1";
       partInp.placeholder="Select Bus Type..."; partInp.style.color="#111";
-      serialInp.placeholder="Select Transmission Type..."; serialInp.style.color="#999";
+      partInp.removeAttribute("list"); partInp.setAttribute("autocomplete","off");
+      partInp.setAttribute("readonly","readonly"); partInp.style.cursor="pointer";
+      partInp.addEventListener("keydown",function(){partInp.removeAttribute("readonly");});
+      serialInp.placeholder="Select Transmission Type..."; serialInp.style.color="#111";
+      serialInp.removeAttribute("list"); serialInp.setAttribute("autocomplete","off");
+      serialInp.setAttribute("readonly","readonly"); serialInp.style.cursor="pointer";
+      serialInp.addEventListener("keydown",function(){serialInp.removeAttribute("readonly");});
       diwaSerialInp.style.display="";
-      var dl1=document.createElement("datalist"); dl1.id=btListId;
-      var mapping=cfg.diwaMapping||{};
-      Object.keys(mapping).sort().forEach(function(bt){var o=document.createElement("option");o.value=bt;dl1.appendChild(o);});
-      document.body.appendChild(dl1); partInp.setAttribute("list",btListId);
-      var dl2=document.createElement("datalist"); dl2.id=ttListId;
-      document.body.appendChild(dl2); serialInp.setAttribute("list",ttListId);
-      partInp.oninput=function(){
-        var bt=partInp.value.trim();
-        var types=(cfg.diwaMapping&&cfg.diwaMapping[bt])||[];
-        var dl2b=document.getElementById(ttListId); if(!dl2b)return;
-        dl2b.innerHTML="";
-        types.forEach(function(t){var o=document.createElement("option");o.value=t;dl2b.appendChild(o);});
-        if(types.length>0){serialInp.style.color="#111";}
-        if(!types.some(function(t){return t===serialInp.value;})) serialInp.value="";
+      _btPanel=attachDropdownPanel(partInp,function(){
+        return Object.keys(cfg.diwaMapping||{}).sort();
+      },false);
+      _ttPanel=attachDropdownPanel(serialInp,function(){
+        return(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
+      },false);
+      partInp.addEventListener("input",function(){
+        serialInp.value="";
+        if(!types||!types.some(function(t){return t===serialInp.value;})) serialInp.value="";
+        var types=(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
         updateProgress();
-      };
+      });
     } else {
       row.dataset.diwa="";
-      partInp.placeholder="Part Number"; partInp.style.color=""; partInp.removeAttribute("list"); partInp.oninput=null;
-      serialInp.placeholder="Serial Number"; serialInp.style.color=""; serialInp.removeAttribute("list");
+      partInp.placeholder="Part Number"; partInp.style.color=""; partInp.removeAttribute("readonly"); partInp.style.cursor="";
+      serialInp.placeholder="Serial Number"; serialInp.style.color=""; serialInp.removeAttribute("readonly"); serialInp.style.cursor="";
       diwaSerialInp.style.display="none"; diwaSerialInp.value="";
     }
     partInp.value=""; serialInp.value="";
@@ -1789,29 +1827,25 @@ function enterEditMode(){
         // DIWA dropdown logic
         var btDlId="edit-bt-dl-"+ii; var ttDlId="edit-tt-dl-"+ii;
         function applyEditDIWA(isDiwa, currentBusType){
-          var oldBt=document.getElementById(btDlId); if(oldBt)oldBt.remove();
-          var oldTt=document.getElementById(ttDlId); if(oldTt)oldTt.remove();
           if(isDiwa){
             partInp.placeholder="Select Bus Type...";
+            partInp.removeAttribute("list"); partInp.setAttribute("autocomplete","off");
+            partInp.setAttribute("readonly","readonly"); partInp.style.cursor="pointer";
+            partInp.addEventListener("keydown",function(){partInp.removeAttribute("readonly");});
             serialInp.placeholder="Select Transmission Type...";
-            // Bus type datalist
-            var dl1=document.createElement("datalist"); dl1.id=btDlId;
-            Object.keys(cfg.diwaMapping||{}).sort().forEach(function(bt){var o=document.createElement("option");o.value=bt;dl1.appendChild(o);});
-            document.body.appendChild(dl1); partInp.setAttribute("list",btDlId);
-            // Transmission type datalist
-            var dl2=document.createElement("datalist"); dl2.id=ttDlId;
-            document.body.appendChild(dl2); serialInp.setAttribute("list",ttDlId);
-            // Populate transmission types for current bus type
-            function filterTrans(bt){
-              var types=(cfg.diwaMapping&&cfg.diwaMapping[bt])||[];
-              dl2.innerHTML="";
-              types.forEach(function(t){var o=document.createElement("option");o.value=t;dl2.appendChild(o);});
-            }
-            if(currentBusType) filterTrans(currentBusType);
-            partInp.oninput=function(){ filterTrans(partInp.value.trim()); };
+            serialInp.removeAttribute("list"); serialInp.setAttribute("autocomplete","off");
+            serialInp.setAttribute("readonly","readonly"); serialInp.style.cursor="pointer";
+            serialInp.addEventListener("keydown",function(){serialInp.removeAttribute("readonly");});
+            attachDropdownPanel(partInp,function(){
+              return Object.keys(cfg.diwaMapping||{}).sort();
+            },false);
+            attachDropdownPanel(serialInp,function(){
+              return(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
+            },false);
+            if(currentBusType) partInp.value=currentBusType;
           } else {
-            partInp.placeholder="Part No. / Bus Type"; partInp.removeAttribute("list"); partInp.oninput=null;
-            serialInp.placeholder="Serial No. / Trans. Type"; serialInp.removeAttribute("list");
+            partInp.placeholder="Part No. / Bus Type"; partInp.removeAttribute("readonly"); partInp.style.cursor="";
+            serialInp.placeholder="Serial No. / Trans. Type"; serialInp.removeAttribute("readonly"); serialInp.style.cursor="";
           }
         }
 
