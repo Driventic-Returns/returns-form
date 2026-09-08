@@ -303,7 +303,7 @@ tr:hover td{background:#fafafa}
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th>${isAdmin?'<th>Update Status</th>':''}<th>View</th>${isAdmin?'<th></th>':''}</tr></thead>
+        <thead id="records-thead"><tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th><th>Update Status</th><th>View</th><th></th></tr></thead>
         <tbody id="records-body"></tbody>
       </table>
     </div>
@@ -1298,6 +1298,9 @@ function getLocation(rec){
 
 function initRecords(){
   if(!db){toast("Connecting...",false);return;}
+  // Update thead columns based on admin status
+  var thead=document.getElementById("records-thead");
+  if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th>'+(isAdmin?'<th>Update Status</th>':'')+'<th>View</th>'+(isAdmin?'<th></th>':'')+'</tr>';
   g("records-body").innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#888">Loading...</td></tr>';
   db.collection("returns").orderBy("date","desc").get().then(function(snap){
     var rows=[];snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
@@ -1514,19 +1517,14 @@ function renderRecordsTable(rows){
     var itemSummary=(r.items?r.items.slice(0,2).map(function(i){return i.name;}).join(", ")+(r.items.length>2?" +"+(r.items.length-2)+" more":""):"-")+(hasPhotos?" &#128247;":"");
     var operator=getOperator(r)||"-";
     var location=getLocation(r)||"-";
-    return'<tr>'+
-      (function(){
-        var frtVal=r.frt||"";
-        var hasNum=/^FRT-\d{6}$/.test(frtVal);
-        var cls=hasNum?" has-number":"";
-        var display=frtVal||"FRT-";
-        // FRT cell — editable for admin, read-only for staff
-        var frtCell=isAdmin
+    var frtVal=r.frt||"";
+    var hasNum=/^FRT-\d{6}$/.test(frtVal);
+    var cls=hasNum?" has-number":"";
+    var display=frtVal||"FRT-";
+    var frtCell=isAdmin
           ?'<td style="white-space:nowrap;display:flex;align-items:center;gap:3px"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-" style="width:105px"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 8px;font-size:11px">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;'+(hasNum?'':'display:none')+'">&#10005;</button></td>'
           :'<td><span class="ref-tag" style="'+(hasNum?'background:#e8f5e9;color:#1b5e20':'')+'">'+(frtVal||'—')+'</span></td>';
-
-        return'<tr>'+
-          frtCell+
+    return'<tr>'+frtCell+
       '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
       '<td>'+esc(operator)+'</td>'+
       '<td>'+esc(location)+'</td>'+
