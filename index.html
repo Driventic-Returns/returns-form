@@ -872,22 +872,23 @@ function makeFieldEl(f){
     di.addEventListener("change",updateProgress);div.appendChild(di);
   } else if(f.type==="dropdown"){
     var isSRField=(/\bsr\b/i.test(f.label)&&/number|num|no\b/i.test(f.label));
-    var useMobilePicker=isMobile()&&!isSRField&&(/warranty|reason/i.test(f.label));
     var dinp=document.createElement("input");dinp.type="text";dinp.id=f.id;
     dinp.setAttribute("autocomplete","off");
 
-    if(useMobilePicker){
-      // Native-feel bottom sheet on mobile
-      dinp.placeholder="Tap to select...";
-      dinp.setAttribute("readonly","readonly");dinp.style.cursor="pointer";
-      dinp.style.caretColor="transparent";
-      dinp.addEventListener("click",function(){
-        showMobilePicker(f.options||[],dinp.value,f.label,function(val){
+    if(isMobile()){
+      // All dropdowns on mobile use bottom-sheet picker
+      dinp.placeholder=isSRField?"Search or tap to browse SR numbers...":"Tap to select...";
+      dinp.setAttribute("readonly","readonly");dinp.style.cursor="pointer";dinp.style.caretColor="transparent";
+      if(isSRField) dinp.setAttribute("data-sr-field","true");
+      function openPicker(){
+        var opts=isSRField?(window._srOptions||[]):(f.options||[]);
+        showMobilePicker(opts,dinp.value,f.label,function(val){
           dinp.value=val;dinp.style.borderColor="";dinp.style.background="";
           dinp.dispatchEvent(new Event("input"));updateProgress();
         });
-      });
-      dinp.addEventListener("touchend",function(e){e.preventDefault();dinp.click();});
+      }
+      dinp.addEventListener("click",openPicker);
+      dinp.addEventListener("touchend",function(e){e.preventDefault();openPicker();});
     } else if(isSRField){
       dinp.placeholder="Search SR number...";
       dinp.setAttribute("data-sr-field","true");
