@@ -748,6 +748,61 @@ function buildFormSections(){
     card.appendChild(body);c.appendChild(card);
   });
 }
+// ── Mobile bottom-sheet picker ────────────────────────────────────────────────
+function showMobilePicker(options, currentVal, title, onSelect){
+  var overlay=document.createElement("div");
+  overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:flex-end;";
+  var sheet=document.createElement("div");
+  sheet.style.cssText="width:100%;max-height:82vh;background:#fff;border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden;";
+
+  // Header
+  var hdr=document.createElement("div");
+  hdr.style.cssText="padding:14px 16px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff;";
+  var htitle=document.createElement("span");htitle.textContent=title;htitle.style.cssText="font-weight:600;font-size:15px;color:#0a1929";
+  var xbtn=document.createElement("button");xbtn.innerHTML="&times;";xbtn.style.cssText="background:none;border:none;font-size:24px;cursor:pointer;color:#888;line-height:1;padding:0 4px";
+  xbtn.addEventListener("click",function(){document.body.removeChild(overlay);});
+  hdr.appendChild(htitle);hdr.appendChild(xbtn);
+
+  // Search bar
+  var srch=document.createElement("input");
+  srch.type="text";srch.placeholder="Search...";
+  srch.style.cssText="margin:10px 14px;padding:10px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:16px;outline:none;font-family:inherit;flex-shrink:0;";
+  srch.autocomplete="off";
+
+  // Options list
+  var lst=document.createElement("div");
+  lst.style.cssText="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;";
+
+  function renderList(q){
+    lst.innerHTML="";
+    var filtered=q?options.filter(function(o){return o.toLowerCase().indexOf(q.toLowerCase())!==-1;}):options;
+    if(!filtered.length){var nd=document.createElement("div");nd.textContent="No matches";nd.style.cssText="padding:14px 16px;color:#aaa;font-size:14px";lst.appendChild(nd);return;}
+    filtered.forEach(function(opt){
+      var item=document.createElement("div");
+      var isSelected=opt===currentVal;
+      item.style.cssText="padding:14px 16px;font-size:15px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;"+(isSelected?"background:#f0faf9;":"");
+      var txt=document.createElement("span");txt.textContent=opt;txt.style.color=isSelected?"#00c4b0":"#111";txt.style.fontWeight=isSelected?"600":"400";
+      item.appendChild(txt);
+      if(isSelected){var ck=document.createElement("span");ck.textContent="✓";ck.style.cssText="color:#00c4b0;font-weight:700";item.appendChild(ck);}
+      function pick(e){e.preventDefault();onSelect(opt);document.body.removeChild(overlay);}
+      item.addEventListener("touchend",pick);item.addEventListener("click",pick);
+      item.addEventListener("touchstart",function(){item.style.background="#f0faf9";},{passive:true});
+      lst.appendChild(item);
+    });
+  }
+
+  srch.addEventListener("input",function(){renderList(srch.value);});
+  renderList("");
+
+  sheet.appendChild(hdr);sheet.appendChild(srch);sheet.appendChild(lst);
+  overlay.appendChild(sheet);
+  overlay.addEventListener("touchstart",function(e){if(e.target===overlay)document.body.removeChild(overlay);},{passive:true});
+  document.body.appendChild(overlay);
+  // Animate up
+  sheet.style.transform="translateY(100%)";
+  requestAnimationFrame(function(){sheet.style.transition="transform .28s cubic-bezier(.4,0,.2,1)";sheet.style.transform="translateY(0)";});
+}
+
 // ── Custom dropdown panel (replaces datalist — works on iOS/Android) ──────────
 function attachDropdownPanel(inp, getOptionsFn, allowFreeText){
   var panel=document.createElement("div");
@@ -817,15 +872,33 @@ function makeFieldEl(f){
     di.addEventListener("change",updateProgress);div.appendChild(di);
   } else if(f.type==="dropdown"){
     var isSRField=(/\bsr\b/i.test(f.label)&&/number|num|no\b/i.test(f.label));
+    var useMobilePicker=isMobile()&&!isSRField&&(/warranty|reason/i.test(f.label));
     var dinp=document.createElement("input");dinp.type="text";dinp.id=f.id;
-    dinp.placeholder=isSRField?"Search SR number...":"Select or type to filter...";
-    dinp.setAttribute("autocomplete","off");dinp.setAttribute("readonly","readonly");
-    dinp.style.cursor="pointer";
-    if(isSRField){dinp.removeAttribute("readonly");dinp.setAttribute("data-sr-field","true");}
-    // Remove readonly on first keypress so typing filters
-    dinp.addEventListener("keydown",function(){dinp.removeAttribute("readonly");});
-    var ddOpts=isSRField?[]:f.options||[];
-    attachDropdownPanel(dinp,function(){return isSRField?(window._srOptions||[]):ddOpts;},isSRField);
+    dinp.setAttribute("autocomplete","off");
+
+    if(useMobilePicker){
+      // Native-feel bottom sheet on mobile
+      dinp.placeholder="Tap to select...";
+      dinp.setAttribute("readonly","readonly");dinp.style.cursor="pointer";
+      dinp.style.caretColor="transparent";
+      dinp.addEventListener("click",function(){
+        showMobilePicker(f.options||[],dinp.value,f.label,function(val){
+          dinp.value=val;dinp.style.borderColor="";dinp.style.background="";
+          dinp.dispatchEvent(new Event("input"));updateProgress();
+        });
+      });
+      dinp.addEventListener("touchend",function(e){e.preventDefault();dinp.click();});
+    } else if(isSRField){
+      dinp.placeholder="Search SR number...";
+      dinp.setAttribute("data-sr-field","true");
+      attachDropdownPanel(dinp,function(){return window._srOptions||[];},true);
+    } else {
+      dinp.placeholder="Select or type to filter...";
+      dinp.setAttribute("readonly","readonly");dinp.style.cursor="pointer";
+      dinp.addEventListener("keydown",function(){dinp.removeAttribute("readonly");});
+      var ddOpts=f.options||[];
+      attachDropdownPanel(dinp,function(){return ddOpts;},false);
+    }
     dinp.addEventListener("input",updateProgress);
     div.appendChild(dinp);
   } else {
@@ -876,31 +949,59 @@ function addItem(){
     if(_btPanel){_btPanel.close();} if(_ttPanel){_ttPanel.close();}
     if(on){
       row.dataset.diwa="1";
-      partInp.placeholder="Select Bus Type..."; partInp.style.color="#111";
-      partInp.removeAttribute("list"); partInp.setAttribute("autocomplete","off");
-      partInp.setAttribute("readonly","readonly"); partInp.style.cursor="pointer";
-      partInp.addEventListener("keydown",function(){partInp.removeAttribute("readonly");});
-      serialInp.placeholder="Select Transmission Type..."; serialInp.style.color="#111";
-      serialInp.removeAttribute("list"); serialInp.setAttribute("autocomplete","off");
-      serialInp.setAttribute("readonly","readonly"); serialInp.style.cursor="pointer";
-      serialInp.addEventListener("keydown",function(){serialInp.removeAttribute("readonly");});
+      partInp.placeholder=isMobile()?"Tap to select Bus Type...":"Select Bus Type...";
+      partInp.style.color="#111"; partInp.removeAttribute("list");
+      partInp.setAttribute("autocomplete","off"); partInp.setAttribute("readonly","readonly");
+      partInp.style.cursor="pointer"; partInp.style.caretColor=isMobile()?"transparent":"";
+      serialInp.placeholder=isMobile()?"Tap to select Transmission Type...":"Select Transmission Type...";
+      serialInp.style.color="#111"; serialInp.removeAttribute("list");
+      serialInp.setAttribute("autocomplete","off"); serialInp.setAttribute("readonly","readonly");
+      serialInp.style.cursor="pointer"; serialInp.style.caretColor=isMobile()?"transparent":"";
       diwaSerialInp.style.display="";
-      _btPanel=attachDropdownPanel(partInp,function(){
-        return Object.keys(cfg.diwaMapping||{}).sort();
-      },false);
-      _ttPanel=attachDropdownPanel(serialInp,function(){
-        return(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
-      },false);
-      partInp.addEventListener("input",function(){
-        serialInp.value="";
-        if(!types||!types.some(function(t){return t===serialInp.value;})) serialInp.value="";
-        var types=(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
-        updateProgress();
-      });
+
+      if(isMobile()){
+        // Mobile: bottom-sheet pickers
+        function openBtPicker(){
+          showMobilePicker(Object.keys(cfg.diwaMapping||{}).sort(),partInp.value,"Select Bus Type",function(val){
+            partInp.value=val;serialInp.value="";
+            partInp.style.borderColor="";partInp.style.background="";
+            partInp.dispatchEvent(new Event("input"));updateProgress();
+          });
+        }
+        function openTtPicker(){
+          var bt=partInp.value.trim();
+          var types=(cfg.diwaMapping&&cfg.diwaMapping[bt])||[];
+          if(!types.length){toast("Please select a Bus Type first",false);return;}
+          showMobilePicker(types,serialInp.value,"Select Transmission Type",function(val){
+            serialInp.value=val;
+            serialInp.style.borderColor="";serialInp.style.background="";
+            serialInp.dispatchEvent(new Event("input"));updateProgress();
+          });
+        }
+        partInp.addEventListener("click",openBtPicker);
+        partInp.addEventListener("touchend",function(e){e.preventDefault();openBtPicker();});
+        serialInp.addEventListener("click",openTtPicker);
+        serialInp.addEventListener("touchend",function(e){e.preventDefault();openTtPicker();});
+      } else {
+        // Desktop: floating panel
+        partInp.addEventListener("keydown",function(){partInp.removeAttribute("readonly");});
+        serialInp.addEventListener("keydown",function(){serialInp.removeAttribute("readonly");});
+        _btPanel=attachDropdownPanel(partInp,function(){
+          return Object.keys(cfg.diwaMapping||{}).sort();
+        },false);
+        _ttPanel=attachDropdownPanel(serialInp,function(){
+          return(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
+        },false);
+        partInp.addEventListener("input",function(){
+          serialInp.value="";
+          var types=(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
+          updateProgress();
+        });
+      }
     } else {
       row.dataset.diwa="";
-      partInp.placeholder="Part Number"; partInp.style.color=""; partInp.removeAttribute("readonly"); partInp.style.cursor="";
-      serialInp.placeholder="Serial Number"; serialInp.style.color=""; serialInp.removeAttribute("readonly"); serialInp.style.cursor="";
+      partInp.placeholder="Part Number"; partInp.style.color=""; partInp.removeAttribute("readonly"); partInp.style.cursor=""; partInp.style.caretColor="";
+      serialInp.placeholder="Serial Number"; serialInp.style.color=""; serialInp.removeAttribute("readonly"); serialInp.style.cursor=""; serialInp.style.caretColor="";
       diwaSerialInp.style.display="none"; diwaSerialInp.value="";
     }
     partInp.value=""; serialInp.value="";
