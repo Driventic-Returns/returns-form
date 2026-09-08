@@ -751,27 +751,49 @@ function buildFormSections(){
 // ── Mobile bottom-sheet picker ────────────────────────────────────────────────
 function showMobilePicker(options, currentVal, title, onSelect){
   var overlay=document.createElement("div");
-  overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:flex-end;";
+  overlay.style.cssText="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:flex-end;";
   var sheet=document.createElement("div");
-  sheet.style.cssText="width:100%;max-height:82vh;background:#fff;border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden;";
+  sheet.style.cssText="width:100%;max-height:82vh;background:#fff;border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);";
+
+  // Adjust when keyboard opens so list stays visible above keyboard
+  function adjustForKeyboard(){
+    if(!window.visualViewport) return;
+    var vv=window.visualViewport;
+    overlay.style.height=vv.height+"px";
+    overlay.style.top=vv.offsetTop+"px";
+    overlay.style.bottom="auto";
+    sheet.style.maxHeight=Math.floor(vv.height*0.92)+"px";
+  }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize",adjustForKeyboard);
+    window.visualViewport.addEventListener("scroll",adjustForKeyboard);
+  }
+
+  function cleanup(){
+    if(window.visualViewport){
+      window.visualViewport.removeEventListener("resize",adjustForKeyboard);
+      window.visualViewport.removeEventListener("scroll",adjustForKeyboard);
+    }
+    if(document.body.contains(overlay)) document.body.removeChild(overlay);
+  }
 
   // Header
   var hdr=document.createElement("div");
   hdr.style.cssText="padding:14px 16px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff;";
   var htitle=document.createElement("span");htitle.textContent=title;htitle.style.cssText="font-weight:600;font-size:15px;color:#0a1929";
-  var xbtn=document.createElement("button");xbtn.innerHTML="&times;";xbtn.style.cssText="background:none;border:none;font-size:24px;cursor:pointer;color:#888;line-height:1;padding:0 4px";
-  xbtn.addEventListener("click",function(){document.body.removeChild(overlay);});
+  var xbtn=document.createElement("button");xbtn.innerHTML="&times;";xbtn.style.cssText="background:none;border:none;font-size:24px;cursor:pointer;color:#888;line-height:1;padding:0 4px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center";
+  xbtn.addEventListener("click",cleanup);
   hdr.appendChild(htitle);hdr.appendChild(xbtn);
 
-  // Search bar
+  // Search bar — stays visible above keyboard because sheet resizes
   var srch=document.createElement("input");
   srch.type="text";srch.placeholder="Search...";
-  srch.style.cssText="margin:10px 14px;padding:10px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:16px;outline:none;font-family:inherit;flex-shrink:0;";
+  srch.style.cssText="margin:10px 14px;padding:11px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:16px;outline:none;font-family:inherit;flex-shrink:0;box-sizing:border-box;";
   srch.autocomplete="off";
 
-  // Options list
+  // Options list — scrollable within remaining space
   var lst=document.createElement("div");
-  lst.style.cssText="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;";
+  lst.style.cssText="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;";
 
   function renderList(q){
     lst.innerHTML="";
@@ -779,29 +801,34 @@ function showMobilePicker(options, currentVal, title, onSelect){
     if(!filtered.length){var nd=document.createElement("div");nd.textContent="No matches";nd.style.cssText="padding:14px 16px;color:#aaa;font-size:14px";lst.appendChild(nd);return;}
     filtered.forEach(function(opt){
       var item=document.createElement("div");
-      var isSelected=opt===currentVal;
-      item.style.cssText="padding:14px 16px;font-size:15px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;"+(isSelected?"background:#f0faf9;":"");
-      var txt=document.createElement("span");txt.textContent=opt;txt.style.color=isSelected?"#00c4b0":"#111";txt.style.fontWeight=isSelected?"600":"400";
+      var isSel=opt===currentVal;
+      item.style.cssText="padding:14px 16px;font-size:15px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;"+(isSel?"background:#f0faf9;":"");
+      var txt=document.createElement("span");txt.textContent=opt;txt.style.color=isSel?"#00c4b0":"#111";txt.style.fontWeight=isSel?"600":"400";
       item.appendChild(txt);
-      if(isSelected){var ck=document.createElement("span");ck.textContent="✓";ck.style.cssText="color:#00c4b0;font-weight:700";item.appendChild(ck);}
-      function pick(e){e.preventDefault();onSelect(opt);document.body.removeChild(overlay);}
+      if(isSel){var ck=document.createElement("span");ck.textContent="✓";ck.style.cssText="color:#00c4b0;font-weight:700;flex-shrink:0";item.appendChild(ck);}
+      function pick(e){e.preventDefault();e.stopPropagation();onSelect(opt);cleanup();}
       item.addEventListener("touchend",pick);item.addEventListener("click",pick);
       item.addEventListener("touchstart",function(){item.style.background="#f0faf9";},{passive:true});
       lst.appendChild(item);
     });
+    lst.scrollTop=0;
   }
 
   srch.addEventListener("input",function(){renderList(srch.value);});
   renderList("");
 
+  overlay.addEventListener("touchstart",function(e){if(e.target===overlay)cleanup();},{passive:true});
   sheet.appendChild(hdr);sheet.appendChild(srch);sheet.appendChild(lst);
   overlay.appendChild(sheet);
-  overlay.addEventListener("touchstart",function(e){if(e.target===overlay)document.body.removeChild(overlay);},{passive:true});
   document.body.appendChild(overlay);
-  // Animate up
-  sheet.style.transform="translateY(100%)";
-  requestAnimationFrame(function(){sheet.style.transition="transform .28s cubic-bezier(.4,0,.2,1)";sheet.style.transform="translateY(0)";});
+
+  // Animate in, then focus search so keyboard opens and adjustForKeyboard fires
+  requestAnimationFrame(function(){
+    sheet.style.transform="translateY(0)";
+    setTimeout(function(){srch.focus();},320);
+  });
 }
+
 
 // ── Custom dropdown panel (replaces datalist — works on iOS/Android) ──────────
 function attachDropdownPanel(inp, getOptionsFn, allowFreeText){
