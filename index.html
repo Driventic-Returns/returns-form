@@ -303,7 +303,7 @@ tr:hover td{background:#fafafa}
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th><th>Update Status</th><th>View</th><th></th></tr></thead>
+        <thead><tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th>${isAdmin?'<th>Update Status</th>':''}<th>View</th>${isAdmin?'<th></th>':''}</tr></thead>
         <tbody id="records-body"></tbody>
       </table>
     </div>
@@ -1173,28 +1173,40 @@ function isMobile(){
 }
 
 function sendEmailWithPDF(pdfResult,subject,body){
-  // Download PDF separately
+  // Download PDF
   var url=URL.createObjectURL(pdfResult.blob);
-  var a=document.createElement("a");a.href=url;a.download=pdfResult.fname;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  var pdfA=document.createElement("a");pdfA.href=url;pdfA.download=pdfResult.fname;
+  pdfA.style.display="none";document.body.appendChild(pdfA);pdfA.click();
+  document.body.removeChild(pdfA);setTimeout(function(){URL.revokeObjectURL(url);},1000);
+
   var to="uksales@driventic.com,James.Berry@driventic.com";
-  var mailtoUrl="mailto:"+to+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+  // Truncate body if very long (mailto URL length limit ~2000 chars)
+  var safeBody=body.length>1500?body.slice(0,1500)+"...\n(truncated)":body;
+  var mailtoUrl="mailto:"+to+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(safeBody);
   var isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
-  setTimeout(function(){
-    if(isIOS){
-      // Try Outlook app; fall back to default mail if Outlook not installed
-      var outlookUrl="ms-outlook://compose?to="+encodeURIComponent(to)+
-        "&subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
-      var done=false;
-      var fb=setTimeout(function(){if(!done){done=true;window.location.href=mailtoUrl;}},1800);
-      window.addEventListener("blur",function onB(){done=true;clearTimeout(fb);window.removeEventListener("blur",onB);});
-      window.location.href=outlookUrl;
-    } else {
-      window.location.href=mailtoUrl;
-    }
-    toast("PDF Downloaded \u2014 Attach It To The Email That Opens",true);
-  },600);
+
+  if(isIOS){
+    // Try Outlook app on iOS first; blur detection falls back to mailto after 2s
+    var outlookUrl="ms-outlook://compose?to="+encodeURIComponent(to)+
+      "&subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(safeBody);
+    var done=false;
+    var fb=setTimeout(function(){
+      if(!done){done=true;openMailtoLink(mailtoUrl);}
+    },2000);
+    window.addEventListener("blur",function onB(){
+      done=true;clearTimeout(fb);window.removeEventListener("blur",onB);
+    });
+    window.location.href=outlookUrl;
+  } else {
+    openMailtoLink(mailtoUrl);
+  }
+  toast("PDF Downloaded \u2014 Attach It To The Email",true);
+}
+
+function openMailtoLink(url){
+  var a=document.createElement("a");a.href=url;a.style.display="none";
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);},500);
 }
 
 function fallbackEmail(pdfResult,subject,body){
@@ -1508,20 +1520,26 @@ function renderRecordsTable(rows){
         var hasNum=/^FRT-\d{6}$/.test(frtVal);
         var cls=hasNum?" has-number":"";
         var display=frtVal||"FRT-";
-        return '<td style="white-space:nowrap;display:flex;align-items:center;gap:3px"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-" style="width:105px"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 8px;font-size:11px">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;'+(hasNum?'':'display:none')+'">&#10005;</button></td>';
-      })()+
+        // FRT cell — editable for admin, read-only for staff
+        var frtCell=isAdmin
+          ?'<td style="white-space:nowrap;display:flex;align-items:center;gap:3px"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-" style="width:105px"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 8px;font-size:11px">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;'+(hasNum?'':'display:none')+'">&#10005;</button></td>'
+          :'<td><span class="ref-tag" style="'+(hasNum?'background:#e8f5e9;color:#1b5e20':'')+'">'+(frtVal||'—')+'</span></td>';
+
+        return'<tr>'+
+          frtCell+
       '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
       '<td>'+esc(operator)+'</td>'+
       '<td>'+esc(location)+'</td>'+
       '<td style="color:#666;font-size:12px">'+esc(itemSummary)+'</td>'+
       '<td><span class="badge s-'+sc+'">'+(r.status||STATUS_OPTIONS[0])+'</span></td>'+
-      '<td><select class="stat-sel" data-id="'+r.id+'">'+opts+'</select></td>'+
+      (isAdmin?'<td><select class="stat-sel" data-id="'+r.id+'">'+opts+'</select></td>':'')+
       '<td><button class="view-rec-btn" data-id="'+r.id+'">View</button></td>'+
-      (isAdmin?'<td><button class="del-rec-btn" data-id="'+r.id+'">&times;</button></td>':'<td></td>')+
+      (isAdmin?'<td><button class="del-rec-btn" data-id="'+r.id+'">&times;</button></td>':'')+
       '</tr>';
   }).join("");
 
-  // Status change
+  // Status change — admin only
+  if(isAdmin){
   document.querySelectorAll(".stat-sel").forEach(function(sel){
     sel.addEventListener("change",function(){
       var newStatus=sel.value;
@@ -1536,8 +1554,10 @@ function renderRecordsTable(rows){
         }).catch(function(e){toast(e.message,false);});
     });
   });
+  } // end isAdmin status block
 
-  // FRT input — enforce prefix, enforce digits only
+  // FRT input — admin only
+  if(isAdmin){
   document.querySelectorAll(".frt-input").forEach(function(inp){
     inp.addEventListener("focus",function(){
       if(!inp.value.startsWith("FRT-")) inp.value="FRT-";
@@ -1581,6 +1601,7 @@ function renderRecordsTable(rows){
         });
     });
   });
+  } // end isAdmin FRT+save block
 
   // View button
   document.querySelectorAll(".view-rec-btn").forEach(function(btn){
