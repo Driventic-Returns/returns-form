@@ -375,6 +375,9 @@ var ADDR = ["Driventic UK Limited","Unit 8, Maricott Court","Holywell Business P
 var CSV_OPERATORS=["A2B Travel","Abellio","Alexander Dennis","Archway Travel","Arriva","Bayliss Travel","Belfast","Blackburn Transport","Brighton & Hove Bus & Coach","Bus Eireann","Carolean Coaches","Compass Travel","Delaine Buses","Diamond Bus","Dublin Bus","Falcon Coaches","Faresaver Buses","First","GAN","Globe Holidays","Go Ahead","Go North East","Go North West","Go South Coast","Hargreaves Coaches","Harrogate And District","Howards Travel","Kinchbus","Lynx Bus","Metrobus","Metroline","Moore Bus","Newbury Buses","Orion Travel","P1 Airport Parking","Park & Fly","Plaxtons","Punjab Coaches","RAPT","Reading Bus","Reading Transport","Reptons Coaches","Sargents Bros","Select Local Bus","SPS","Stagecoach","Taw & Torridge Coaches","Thames Valley Bus","Thomas Of Rhonnda","Transdev","Translink","Trent Barton","Vectis Bus","WB Repower","Wilts & Dorsett","Wolverhampton Buses","Xelabus"];
 var CSV_LOCATIONS=["Aberdeen","Arbroath","Ashington","Barnsley","Barnstaple","Battersea","Belfast","Bexley Heath","Bicester","Birkenhead","Blackburn","Blazefield","Bolton","Bookham","Bourne","Bournemouth","Bracknell","Bramley","Bridgewater","Brighton","Brixton","Bromley","Camberwell","Castleford","Catford","Cheltenham","Cheshire","Chesterfield","Chippenham","Crawley","Deptford","Derby","Devon","Dorset","Dover","Dungannon","Eastleigh","Eccles","Edgware","Elgin","Enfield","Fleetwood","Gillingham","Glasgow","Green Lane","Greenford","Harrogate","Harrogate & District","Hayes","Hereford","Hoeford","Holloway","Hounslow Heath","Hyde Rd","Ipswich","Isle Of Wight","Iver","Kent","Kilmarnock","Leicester","Lewis","Leyton","Limavady","Limerick","Linwood","Liverpool","Londonderry","Loughborough","Manchester","Merton","Milewater","Newbury","Newcastle","Norfolk","Northampton","Norwich","Norwood","Oldham","Oxford","Pennyburn","Philsborough","Poole","Porth","Preston","Queen's Road","Reading","Redditch","Romford","Roxborough","Shortstrand","Skipton","Southall","Southampton","Speke","Stockport","Summerhill","Surrey","Sutton","Sutton Junction","Swansea","Tadley","The Shires Luton","Thornton Heath","Thurmaston","Tottenham","Twickenham","Walkergate","Walsall","Walthamstow","Walworth","Warrington","Westbourne Park","Wolverhampton","Wythenshawe","York"];
 
+var SUPABASE_SR_URL="https://plekykkdvevqblvdayhm.supabase.co/storage/v1/object/vor-data/sr-list.json";
+var SUPABASE_SR_KEY="sb_publishable_bpd9qIOrqVxtgcfejgFriQ_QVLYWjuP";
+
 var STATUS_OPTIONS = ["Dispatched From Depot","Received At Driventic UK","Dispatched From Driventic UK","Received At Driventic GmbH"];
 
 var DEFAULT_SECTIONS = [
@@ -590,7 +593,51 @@ g("nav-admin").addEventListener("click",    function(){showPage("admin");});
 // ═══════════════════════════════════════════
 // FORM
 // ═══════════════════════════════════════════
+function loadSRList(){
+  fetch(SUPABASE_SR_URL,{
+    headers:{"Authorization":"Bearer "+SUPABASE_SR_KEY,"apikey":SUPABASE_SR_KEY}
+  })
+  .then(function(r){
+    if(!r.ok) throw new Error("Status "+r.status);
+    return r.json();
+  })
+  .then(function(data){
+    // Handle common JSON formats: array of strings, array of objects
+    var srNumbers=[];
+    if(Array.isArray(data)){
+      data.forEach(function(item){
+        if(typeof item==="string") srNumbers.push(item);
+        else {
+          // Try common key names
+          var val=item.sr_number||item.SR_Number||item.sr||item.SR||item.number||item.id||Object.values(item)[0];
+          if(val) srNumbers.push(String(val));
+        }
+      });
+    } else if(typeof data==="object"){
+      // Maybe it's {sr_numbers: [...]} or similar
+      var arr=data.sr_numbers||data.SR_Numbers||data.data||data.items||Object.values(data)[0];
+      if(Array.isArray(arr)) arr.forEach(function(v){if(v)srNumbers.push(String(v));});
+    }
+    srNumbers=srNumbers.filter(Boolean).sort();
+
+    // Create/update global SR datalist
+    var dl=document.getElementById("sr-global-datalist");
+    if(!dl){dl=document.createElement("datalist");dl.id="sr-global-datalist";document.body.appendChild(dl);}
+    dl.innerHTML="";
+    srNumbers.forEach(function(sr){var o=document.createElement("option");o.value=sr;dl.appendChild(o);});
+
+    // Wire to any already-rendered SR fields
+    document.querySelectorAll("[data-sr-field]").forEach(function(inp){
+      inp.setAttribute("list","sr-global-datalist");
+    });
+
+    console.log("SR list loaded: "+srNumbers.length+" entries");
+  })
+  .catch(function(e){console.warn("SR list not loaded:",e.message);});
+}
+
 function initForm(){
+  loadSRList();
   selectedDateRaw=todayInputVal();
   selectedDate=fmtDateLong(selectedDateRaw);
   g("btn-submit").textContent="Save & Email Return";g("btn-submit").disabled=false;
@@ -675,11 +722,15 @@ function makeFieldEl(f){
     di.style.maxWidth="200px";
     di.addEventListener("change",updateProgress);div.appendChild(di);
   } else if(f.type==="dropdown"){
-    var listId="dl-"+f.id;
+    var isSRField=(/\bsr\b/i.test(f.label)&&/number|num|no\b/i.test(f.label));
+    var listId=isSRField?"sr-global-datalist":"dl-"+f.id;
     var dinp=document.createElement("input");dinp.type="text";dinp.id=f.id;
-    dinp.placeholder="Type Or Choose...";dinp.setAttribute("list",listId);dinp.setAttribute("autocomplete","off");
+    dinp.placeholder=isSRField?"Type or search SR number...":"Type Or Choose...";
+    dinp.setAttribute("list",listId);dinp.setAttribute("autocomplete","off");
+    if(isSRField) dinp.setAttribute("data-sr-field","true");
     dinp.addEventListener("input",updateProgress);
     dinp.addEventListener("blur",function(){
+      if(isSRField) return; // SR field accepts any value from live list
       var val=dinp.value.trim();
       var opts=f.options||[];
       if(val && opts.indexOf(val)===-1){
@@ -693,9 +744,12 @@ function makeFieldEl(f){
       }
       updateProgress();
     });
-    var dl=document.createElement("datalist");dl.id=listId;
-    (f.options||[]).forEach(function(opt){var o=document.createElement("option");o.value=opt;dl.appendChild(o);});
-    div.appendChild(dinp);div.appendChild(dl);
+    if(!isSRField){
+      var dl=document.createElement("datalist");dl.id=listId;
+      (f.options||[]).forEach(function(opt){var o=document.createElement("option");o.value=opt;dl.appendChild(o);});
+      div.appendChild(dl);
+    }
+    div.appendChild(dinp);
   } else {
     var inp=document.createElement("input");inp.type="text";inp.id=f.id;inp.placeholder=f.placeholder||"";
     inp.addEventListener("input",updateProgress);div.appendChild(inp);
