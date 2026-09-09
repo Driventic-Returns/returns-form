@@ -1803,6 +1803,22 @@ function renderRecordsTable(rows){
     });
   });
 
+  // FRT clear buttons — admin only
+  document.querySelectorAll(".frt-clear-btn").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var id=btn.dataset.id;
+      confirm2("Clear FRT Number","Remove the FRT number from this record?",function(){
+        db.collection("returns").doc(id).update({frt:""})
+          .then(function(){
+            var inp=document.querySelector('.frt-input[data-id="'+id+'"]');
+            if(inp){inp.value="FRT-";inp.classList.remove("has-number");}
+            btn.style.display="none";
+            toast("FRT Number Cleared");
+          }).catch(function(e){toast(e.message,false);});
+      });
+    });
+  });
+
   // FRT save buttons
   document.querySelectorAll(".frt-save-btn").forEach(function(btn){
     btn.addEventListener("click",function(){
