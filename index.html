@@ -520,7 +520,8 @@ function openLightbox(src){
 g("photo-lightbox").addEventListener("click",function(){g("photo-lightbox").classList.remove("open");});
 g("photo-lightbox-close").addEventListener("click",function(e){e.stopPropagation();g("photo-lightbox").classList.remove("open");});
 
-g("modal-confirm").addEventListener("click",function(){g("modal-bg").classList.remove("open");if(modalCb)modalCb();});
+g("modal-cancel").addEventListener("click",function(){g("modal-bg").classList.remove("open");modalCb=null;});
+g("modal-confirm").addEventListener("click",function(){g("modal-bg").classList.remove("open");if(modalCb)modalCb();modalCb=null;});
 
 // ═══════════════════════════════════════════
 // LOGIN
