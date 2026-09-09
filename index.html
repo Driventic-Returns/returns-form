@@ -259,11 +259,11 @@ tr:hover td{background:#fafafa}
     <div class="actions">
       <div class="act-title">Save &amp; Export</div>
       <button class="btn btn-black btn-full" id="btn-submit" style="margin-bottom:10px">Save &amp; Email Return</button>
-      <div class="export-grid">
+      <div class="export-grid" id="form-export-btns">
         <button class="btn btn-black btn-full" id="btn-company">&#8595; Return Request ATR Form</button>
         <button class="btn btn-outline btn-full" id="btn-custslip">&#8595; Returned Goods Form</button>
       </div>
-      <div class="export-grid" style="margin-top:8px">
+      <div class="export-grid" id="form-email-btns" style="margin-top:8px">
         <button class="btn btn-ghost btn-full" id="btn-email-atr">&#9993; E-mail Return Request Form</button>
         <button class="btn btn-ghost btn-full" id="btn-email-rgf">&#9993; E-mail Returned Goods Form</button>
       </div>
@@ -678,6 +678,10 @@ function initForm(){
   selectedDateRaw=todayInputVal();
   selectedDate=fmtDateLong(selectedDateRaw);
   g("btn-submit").textContent="Save & Email Return";g("btn-submit").disabled=false;
+  // On mobile, non-admin: hide independent export/email buttons — keep Save & Email + Clear only
+  var hideMobileExport=isMobile()&&!isAdmin;
+  if(g("form-export-btns")) g("form-export-btns").style.display=hideMobileExport?"none":"";
+  if(g("form-email-btns")) g("form-email-btns").style.display=hideMobileExport?"none":"";
   buildFormSections();
   var rdEl=g("return-date"); if(rdEl) rdEl.value=selectedDateRaw;
   updateProgress();
