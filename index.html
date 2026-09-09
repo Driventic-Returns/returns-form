@@ -977,27 +977,40 @@ function addItem(){
   }
 
   var _btPanel=null, _ttPanel=null;
+  var _mobileHandlers={btClick:null,btTouch:null,ttClick:null,ttTouch:null};
+
+  function clearMobileHandlers(){
+    if(_mobileHandlers.btClick){partInp.removeEventListener("click",_mobileHandlers.btClick);}
+    if(_mobileHandlers.btTouch){partInp.removeEventListener("touchend",_mobileHandlers.btTouch);}
+    if(_mobileHandlers.ttClick){serialInp.removeEventListener("click",_mobileHandlers.ttClick);}
+    if(_mobileHandlers.ttTouch){serialInp.removeEventListener("touchend",_mobileHandlers.ttTouch);}
+    _mobileHandlers={btClick:null,btTouch:null,ttClick:null,ttTouch:null};
+  }
+
   function applyDIWAMode(on){
     if(_btPanel){_btPanel.close();} if(_ttPanel){_ttPanel.close();}
+    clearMobileHandlers();
+
     if(on){
       row.dataset.diwa="1";
       partInp.placeholder=isMobile()?"Tap to select Bus Type...":"Select Bus Type...";
       partInp.style.color="#111"; partInp.removeAttribute("list");
-      partInp.setAttribute("autocomplete","off"); partInp.setAttribute("readonly","readonly");
-      partInp.style.cursor="pointer"; partInp.style.caretColor=isMobile()?"transparent":"";
+      partInp.setAttribute("autocomplete","off");
       serialInp.placeholder=isMobile()?"Tap to select Transmission Type...":"Select Transmission Type...";
       serialInp.style.color="#111"; serialInp.removeAttribute("list");
-      serialInp.setAttribute("autocomplete","off"); serialInp.setAttribute("readonly","readonly");
-      serialInp.style.cursor="pointer"; serialInp.style.caretColor=isMobile()?"transparent":"";
+      serialInp.setAttribute("autocomplete","off");
       diwaSerialInp.style.display="";
+      // diwaSerialInp remains a plain free-text input always
 
       if(isMobile()){
-        // Mobile: bottom-sheet pickers
+        partInp.setAttribute("readonly","readonly"); partInp.style.cursor="pointer"; partInp.style.caretColor="transparent";
+        serialInp.setAttribute("readonly","readonly"); serialInp.style.cursor="pointer"; serialInp.style.caretColor="transparent";
+
         function openBtPicker(){
           showMobilePicker(Object.keys(cfg.diwaMapping||{}).sort(),partInp.value,"Select Bus Type",function(val){
-            partInp.value=val;serialInp.value="";
-            partInp.style.borderColor="";partInp.style.background="";
-            partInp.dispatchEvent(new Event("input"));updateProgress();
+            partInp.value=val; serialInp.value="";
+            partInp.style.borderColor=""; partInp.style.background="";
+            partInp.dispatchEvent(new Event("input")); updateProgress();
           });
         }
         function openTtPicker(){
@@ -1006,34 +1019,36 @@ function addItem(){
           if(!types.length){toast("Please select a Bus Type first",false);return;}
           showMobilePicker(types,serialInp.value,"Select Transmission Type",function(val){
             serialInp.value=val;
-            serialInp.style.borderColor="";serialInp.style.background="";
-            serialInp.dispatchEvent(new Event("input"));updateProgress();
+            serialInp.style.borderColor=""; serialInp.style.background="";
+            serialInp.dispatchEvent(new Event("input")); updateProgress();
           });
         }
-        partInp.addEventListener("click",openBtPicker);
-        partInp.addEventListener("touchend",function(e){e.preventDefault();openBtPicker();});
-        serialInp.addEventListener("click",openTtPicker);
-        serialInp.addEventListener("touchend",function(e){e.preventDefault();openTtPicker();});
+        _mobileHandlers.btClick=openBtPicker;
+        _mobileHandlers.btTouch=function(e){e.preventDefault();openBtPicker();};
+        _mobileHandlers.ttClick=openTtPicker;
+        _mobileHandlers.ttTouch=function(e){e.preventDefault();openTtPicker();};
+        partInp.addEventListener("click",_mobileHandlers.btClick);
+        partInp.addEventListener("touchend",_mobileHandlers.btTouch);
+        serialInp.addEventListener("click",_mobileHandlers.ttClick);
+        serialInp.addEventListener("touchend",_mobileHandlers.ttTouch);
       } else {
-        // Desktop: floating panel
+        partInp.removeAttribute("readonly"); partInp.style.cursor=""; partInp.style.caretColor="";
+        serialInp.removeAttribute("readonly"); serialInp.style.cursor=""; serialInp.style.caretColor="";
         partInp.addEventListener("keydown",function(){partInp.removeAttribute("readonly");});
         serialInp.addEventListener("keydown",function(){serialInp.removeAttribute("readonly");});
-        _btPanel=attachDropdownPanel(partInp,function(){
-          return Object.keys(cfg.diwaMapping||{}).sort();
-        },false);
-        _ttPanel=attachDropdownPanel(serialInp,function(){
-          return(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
-        },false);
-        partInp.addEventListener("input",function(){
-          serialInp.value="";
-          var types=(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];
-          updateProgress();
-        });
+        _btPanel=attachDropdownPanel(partInp,function(){return Object.keys(cfg.diwaMapping||{}).sort();},false);
+        _ttPanel=attachDropdownPanel(serialInp,function(){return(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];},false);
+        partInp.addEventListener("input",function(){serialInp.value="";updateProgress();});
       }
     } else {
       row.dataset.diwa="";
-      partInp.placeholder="Part Number"; partInp.style.color=""; partInp.removeAttribute("readonly"); partInp.style.cursor=""; partInp.style.caretColor="";
-      serialInp.placeholder="Serial Number"; serialInp.style.color=""; serialInp.removeAttribute("readonly"); serialInp.style.cursor=""; serialInp.style.caretColor="";
+      // Restore plain free-text inputs — clear all picker state
+      partInp.placeholder="Part Number"; partInp.style.color="";
+      partInp.removeAttribute("readonly"); partInp.style.cursor=""; partInp.style.caretColor="";
+      partInp.removeAttribute("list");
+      serialInp.placeholder="Serial Number"; serialInp.style.color="";
+      serialInp.removeAttribute("readonly"); serialInp.style.cursor=""; serialInp.style.caretColor="";
+      serialInp.removeAttribute("list");
       diwaSerialInp.style.display="none"; diwaSerialInp.value="";
     }
     partInp.value=""; serialInp.value="";
@@ -1674,6 +1689,37 @@ function renderTrackingMap(rows){
   document.head.appendChild(s);
 }
 
+function showStatusDateModal(status, existingDate, onConfirm, onCancel){
+  var modal=document.createElement("div");
+  modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:1rem";
+  var box=document.createElement("div");
+  box.style.cssText="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.2)";
+  var sc=statusClass(status);
+  var todayVal=new Date().toISOString().split("T")[0];
+  // Parse existing date back to input value if present
+  var inputVal=todayVal;
+  if(existingDate){try{var d=new Date(existingDate);if(!isNaN(d))inputVal=d.toISOString().split("T")[0];}catch(e){}}
+  box.innerHTML=
+    '<p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#00c4b0;margin-bottom:6px">Set Status Date</p>'+
+    '<span class="badge s-'+sc+'" style="display:inline-block;margin-bottom:16px">'+esc(status)+'</span>'+
+    '<label style="display:block;font-size:12px;color:#888;margin-bottom:6px">Date of status change</label>'+
+    '<input type="date" id="status-date-inp" style="width:100%;padding:10px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;font-family:inherit;outline:none;margin-bottom:18px;box-sizing:border-box">'+
+    '<div style="display:flex;gap:8px">'+
+    '<button id="sdm-cancel" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:6px;font-family:inherit;cursor:pointer;font-size:13px">Cancel</button>'+
+    '<button id="sdm-confirm" style="flex:1;padding:10px;background:#0a1929;color:#fff;border:none;border-radius:6px;font-family:inherit;cursor:pointer;font-weight:600;font-size:13px">Confirm</button>'+
+    '</div>';
+  box.querySelector("#status-date-inp").value=inputVal;
+  function close(){if(document.body.contains(modal))document.body.removeChild(modal);}
+  box.querySelector("#sdm-cancel").addEventListener("click",function(){close();if(onCancel)onCancel();});
+  box.querySelector("#sdm-confirm").addEventListener("click",function(){
+    var v=box.querySelector("#status-date-inp").value||todayVal;
+    close(); onConfirm(fmtDateLong(v));
+  });
+  modal.addEventListener("click",function(e){if(e.target===modal){close();if(onCancel)onCancel();}});
+  modal.appendChild(box); document.body.appendChild(modal);
+  setTimeout(function(){box.querySelector("#status-date-inp").focus();},50);
+}
+
 function renderRecordsTable(rows){
   if(!rows.length){
     g("records-body").innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:#888">No returns found</td></tr>';
@@ -1710,17 +1756,24 @@ function renderRecordsTable(rows){
   // Status change — admin only
   if(isAdmin){
   document.querySelectorAll(".stat-sel").forEach(function(sel){
+    var prevStatus=sel.value;
     sel.addEventListener("change",function(){
       var newStatus=sel.value;
-      var sc=statusClass(newStatus);
-      db.collection("returns").doc(sel.dataset.id).update({status:newStatus})
-        .then(function(){
-          toast("Status Updated");
-          var badge=sel.closest("tr").querySelector(".badge");
-          if(badge){badge.className="badge s-"+sc;badge.textContent=newStatus;}
-          var rowRec=allRecordRows.find(function(x){return x.id===sel.dataset.id;});
-          if(rowRec)rowRec.status=newStatus;
-        }).catch(function(e){toast(e.message,false);});
+      var rec=allRecordRows.find(function(x){return x.id===sel.dataset.id;});
+      var existing=(rec&&rec.statusDates&&rec.statusDates[newStatus])||"";
+      showStatusDateModal(newStatus,existing,function(dateStr){
+        var sc=statusClass(newStatus);
+        var updateData={status:newStatus};
+        updateData["statusDates."+newStatus]=dateStr;
+        db.collection("returns").doc(sel.dataset.id).update(updateData)
+          .then(function(){
+            toast("Status Updated");
+            var badge=sel.closest("tr").querySelector(".badge");
+            if(badge){badge.className="badge s-"+sc;badge.textContent=newStatus;}
+            if(rec){rec.status=newStatus;if(!rec.statusDates)rec.statusDates={};rec.statusDates[newStatus]=dateStr;}
+            prevStatus=newStatus;
+          }).catch(function(e){toast(e.message,false);sel.value=prevStatus;});
+      },function(){sel.value=prevStatus;}); // cancel — revert dropdown
     });
   });
   } // end isAdmin status block
@@ -1833,6 +1886,32 @@ function openDetail(rec){
   g("detail-ref").textContent=(rec.frt||"No FRT Assigned");
   g("detail-meta").textContent=(rec.selectedDate||fmtDateFromTs(rec.date))+" · "+(rec.status||"");
   var body=g("detail-body"); body.innerHTML="";
+
+  // Status Timeline — show dates for each status change
+  var statusDates=rec.statusDates||{};
+  var hasAnyDates=STATUS_OPTIONS.some(function(s){return statusDates[s];});
+  if(hasAnyDates||rec.status){
+    var tlSec=document.createElement("div");tlSec.className="detail-sec";
+    var tlTitle=document.createElement("div");tlTitle.className="detail-sec-title";tlTitle.textContent="Status Timeline";
+    tlSec.appendChild(tlTitle);
+    STATUS_OPTIONS.forEach(function(s){
+      var sc=statusClass(s);
+      var dateStr=statusDates[s]||"";
+      var isActive=s===rec.status;
+      if(!dateStr&&!isActive) return; // only show statuses that have dates or are current
+      var row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;flex-wrap:wrap;";
+      var badge=document.createElement("span");badge.className="badge s-"+sc;badge.textContent=s;
+      badge.style.flexShrink="0";
+      var dateEl=document.createElement("span");
+      dateEl.style.cssText="font-size:12px;color:"+(dateStr?"#555":"#bbb")+";margin-left:auto;";
+      dateEl.textContent=dateStr||"Date not recorded";
+      row.appendChild(badge);
+      row.appendChild(dateEl);
+      tlSec.appendChild(row);
+    });
+    body.appendChild(tlSec);
+  }
 
   // Render each section from stored fields
   cfg.sections.forEach(function(sec){
