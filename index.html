@@ -678,10 +678,10 @@ function initForm(){
   selectedDateRaw=todayInputVal();
   selectedDate=fmtDateLong(selectedDateRaw);
   g("btn-submit").textContent="Save & Email Return";g("btn-submit").disabled=false;
-  // On mobile, non-admin: hide independent export/email buttons — keep Save & Email + Clear only
-  var hideMobileExport=isMobile()&&!isAdmin;
-  if(g("form-export-btns")) g("form-export-btns").style.display=hideMobileExport?"none":"";
-  if(g("form-email-btns")) g("form-email-btns").style.display=hideMobileExport?"none":"";
+  // Non-admin: hide independent export/email buttons — keep Save & Email + Clear only
+  var hideExport=!isAdmin;
+  if(g("form-export-btns")) g("form-export-btns").style.display=hideExport?"none":"";
+  if(g("form-email-btns")) g("form-email-btns").style.display=hideExport?"none":"";
   buildFormSections();
   var rdEl=g("return-date"); if(rdEl) rdEl.value=selectedDateRaw;
   updateProgress();
