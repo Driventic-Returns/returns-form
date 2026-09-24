@@ -1370,15 +1370,14 @@ function sendEmailWithPDF(pdfResult,subject,body,to){
   pdfA.style.display="none";document.body.appendChild(pdfA);pdfA.click();
   document.body.removeChild(pdfA);setTimeout(function(){URL.revokeObjectURL(url);},1000);
 
-  var to=(arguments.length>3&&to!==undefined)?to:"uksales@driventic.com,James.Berry@driventic.com";
+  var toAddr=(to!==undefined&&to!==null)?to:"uksales@driventic.com,James.Berry@driventic.com";
   // Truncate body if very long (mailto URL length limit ~2000 chars)
   var safeBody=body.length>1500?body.slice(0,1500)+"...\n(truncated)":body;
-  var mailtoUrl="mailto:"+to+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(safeBody);
+  var mailtoUrl="mailto:"+toAddr+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(safeBody);
   var isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   if(isIOS){
-    // Try Outlook app on iOS first; blur detection falls back to mailto after 2s
-    var outlookUrl="ms-outlook://compose?to="+encodeURIComponent(to)+
+    var outlookUrl="ms-outlook://compose?to="+encodeURIComponent(toAddr)+
       "&subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(safeBody);
     var done=false;
     var fb=setTimeout(function(){
@@ -1425,7 +1424,8 @@ function emailForm(type){
   var body=buildEmailBody(formName,"",selectedDate,fakeRec,type,cfg.sections);
   var pdfResult=exportPDF(fakeRec,type,cfg.sections,true);
   sendEmailWithPDF(pdfResult,subject,body,type==="customer"?"":undefined);
-}(rec,type){
+}
+function emailFormFromRecord(rec,type){
   var items=rec.items||[];
   var operator=getRecFieldByLabel(rec,"operator")||getRecFieldByLabel(rec,"engineer")||(rec.customer&&rec.customer.name)||"";
   var location=getRecFieldByLabel(rec,"location")||"";
@@ -1439,7 +1439,8 @@ function emailForm(type){
   var body=buildEmailBody(formName,recRef,recDate,rec,type,cfg.sections);
   var pdfResult=exportPDF(rec,type,cfg.sections,true);
   sendEmailWithPDF(pdfResult,subject,body,type==="customer"?"":undefined);
-}(type){
+}
+function exportFromForm(type){
   var items=getItems();
   if(!items.length){toast("Please Add At Least One Item",false);return;}
   // Build record-like object from current form
