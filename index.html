@@ -920,14 +920,11 @@ function makeFieldEl(f){
         dinp.placeholder="Type or browse SR numbers...";
         dinp.setAttribute("data-sr-field","true");
         dinp.style.paddingRight="36px";
-        // Small browse icon button alongside the input
         var srBrowseBtn=document.createElement("button");
         srBrowseBtn.type="button";
         srBrowseBtn.textContent="⋯";
         srBrowseBtn.style.cssText="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;color:#555;padding:0 4px;";
         div.style.position="relative";
-        div.appendChild(dinp);
-        div.appendChild(srBrowseBtn);
         srBrowseBtn.addEventListener("click",function(e){
           e.preventDefault();
           var opts=window._srOptions&&window._srOptions.length?window._srOptions:["SR list loading..."];
@@ -937,33 +934,39 @@ function makeFieldEl(f){
           });
         });
         dinp.addEventListener("input",updateProgress);
-        return; // div already has children appended
+        div.appendChild(dinp);
+        div.appendChild(srBrowseBtn);
+      } else {
+        // All other dropdowns on mobile use bottom-sheet picker
+        dinp.placeholder="Tap to select...";
+        dinp.setAttribute("readonly","readonly");dinp.style.cursor="pointer";dinp.style.caretColor="transparent";
+        function openPicker(){
+          var opts=f.options||[];
+          showMobilePicker(opts,dinp.value,f.label,function(val){
+            dinp.value=val;dinp.style.borderColor="";dinp.style.background="";
+            dinp.dispatchEvent(new Event("input"));updateProgress();
+          });
+        }
+        dinp.addEventListener("click",openPicker);
+        dinp.addEventListener("touchend",function(e){e.preventDefault();openPicker();});
+        dinp.addEventListener("input",updateProgress);
+        div.appendChild(dinp);
       }
-      // All other dropdowns on mobile use bottom-sheet picker
-      dinp.placeholder="Tap to select...";
-      dinp.setAttribute("readonly","readonly");dinp.style.cursor="pointer";dinp.style.caretColor="transparent";
-      function openPicker(){
-        var opts=f.options||[];
-        showMobilePicker(opts,dinp.value,f.label,function(val){
-          dinp.value=val;dinp.style.borderColor="";dinp.style.background="";
-          dinp.dispatchEvent(new Event("input"));updateProgress();
-        });
-      }
-      dinp.addEventListener("click",openPicker);
-      dinp.addEventListener("touchend",function(e){e.preventDefault();openPicker();});
     } else if(isSRField){
       dinp.placeholder="Search SR number...";
       dinp.setAttribute("data-sr-field","true");
       attachDropdownPanel(dinp,function(){return window._srOptions||[];},true);
+      dinp.addEventListener("input",updateProgress);
+      div.appendChild(dinp);
     } else {
       dinp.placeholder="Select or type to filter...";
       dinp.setAttribute("readonly","readonly");dinp.style.cursor="pointer";
       dinp.addEventListener("keydown",function(){dinp.removeAttribute("readonly");});
       var ddOpts=f.options||[];
       attachDropdownPanel(dinp,function(){return ddOpts;},false);
+      dinp.addEventListener("input",updateProgress);
+      div.appendChild(dinp);
     }
-    dinp.addEventListener("input",updateProgress);
-    div.appendChild(dinp);
   } else {
     var inp=document.createElement("input");inp.type="text";inp.id=f.id;inp.placeholder=f.placeholder||"";
     inp.addEventListener("input",updateProgress);div.appendChild(inp);
