@@ -1892,20 +1892,17 @@ function renderRecordsTable(rows){
   if(isAdmin){
   document.querySelectorAll(".frt-input").forEach(function(inp){
     inp.addEventListener("focus",function(){
-      if(!inp.value.startsWith("FRT-")) inp.value="FRT-";
+      // No forced prefix — let the user type or delete freely
     });
     inp.addEventListener("input",function(){
-      var val=inp.value;
-      if(!val.startsWith("FRT-")) val="FRT-";
-      var digits=val.slice(4).replace(/[^0-9]/g,"").slice(0,6);
-      inp.value="FRT-"+digits;
+      inp.classList.toggle("has-number",inp.value.trim().length>0);
     });
     inp.addEventListener("keydown",function(e){
       if(e.key==="Enter"){
         var btn=document.querySelector('.frt-save-btn[data-id="'+inp.dataset.id+'"]');
         if(btn) btn.click();
       }
-      if((e.key==="Backspace"||e.key==="Delete")&&inp.selectionStart<=4) e.preventDefault();
+      // Allow full deletion — input handler will re-add "FRT-" prefix as user types
     });
   });
 
@@ -1917,7 +1914,7 @@ function renderRecordsTable(rows){
         db.collection("returns").doc(id).update({frt:""})
           .then(function(){
             var inp=document.querySelector('.frt-input[data-id="'+id+'"]');
-            if(inp){inp.value="FRT-";inp.classList.remove("has-number");}
+            if(inp){inp.value="";inp.classList.remove("has-number");}
             btn.style.display="none";
             toast("FRT Number Cleared");
           }).catch(function(e){toast(e.message,false);});
@@ -1931,17 +1928,27 @@ function renderRecordsTable(rows){
       var id=btn.dataset.id;
       var inp=document.querySelector('.frt-input[data-id="'+id+'"]');
       if(!inp) return;
-      if(!/^FRT-\d{6}$/.test(inp.value)){
-        toast("Please Enter A Valid 6-Digit Number After FRT-",false);
+      var isEmpty=inp.value===""||inp.value==="FRT-";
+      if(!isEmpty&&!/^FRT-\d{6}$/.test(inp.value)){
+        toast("Please enter a valid 6-digit number (e.g. FRT-123456)",false);
         return;
       }
+      var saveVal=isEmpty?"":inp.value;
       btn.textContent="Saving..."; btn.disabled=true;
-      db.collection("returns").doc(id).update({frt:inp.value})
+      db.collection("returns").doc(id).update({frt:saveVal})
         .then(function(){
-          inp.classList.add("has-number");
-          btn.textContent="Saved \u2713"; btn.style.background="#388e3c";
-          setTimeout(function(){btn.textContent="Save";btn.style.background="";btn.disabled=false;},2000);
-          toast("FRT Number Saved");
+          if(isEmpty){
+            inp.value=""; inp.classList.remove("has-number");
+            var clearBtn=document.querySelector('.frt-clear-btn[data-id="'+id+'"]');
+            if(clearBtn) clearBtn.style.display="none";
+            btn.textContent="Save"; btn.style.background=""; btn.disabled=false;
+            toast("FRT Number Removed");
+          } else {
+            inp.classList.add("has-number");
+            btn.textContent="Saved \u2713"; btn.style.background="#388e3c";
+            setTimeout(function(){btn.textContent="Save";btn.style.background="";btn.disabled=false;},2000);
+            toast("FRT Number Saved");
+          }
         })
         .catch(function(e){
           toast(e.message,false);
