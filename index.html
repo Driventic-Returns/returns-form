@@ -140,7 +140,11 @@ tr:hover td{background:#fafafa}
 .s-received-at-driventic-uk{background:#EBF5FB;color:#1A5276}
 .s-dispatched-from-driventic-uk{background:#1A5276;color:#fff}
 .s-received-at-driventic-gmbh{background:#EAFAF1;color:#1E8449}
+.s-arrived-at-southam-uk{background:#E8F5E9;color:#1B5E20}
 .s-pending{background:#F2F3F4;color:#666}
+.dest-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;margin-left:4px;vertical-align:middle}
+.dest-uk{background:#E8F5E9;color:#1B5E20}
+.dest-de{background:#EBF5FB;color:#1A5276}
 .stat-sel{padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;font-size:11px;font-family:inherit;background:#fff;cursor:pointer;outline:none;max-width:200px}
 .del-rec-btn{background:none;border:none;cursor:pointer;color:#ccc;font-size:18px;padding:2px 6px;border-radius:4px;transition:all .15s;line-height:1}
 .del-rec-btn:hover{color:#c0392b;background:#fef2f2}
@@ -421,6 +425,10 @@ var SUPABASE_SR_URL="https://plekykkdvevqblvdayhm.supabase.co/storage/v1/object/
 var SUPABASE_SR_KEY="sb_publishable_bpd9qIOrqVxtgcfejgFriQ_QVLYWjuP";
 
 var STATUS_OPTIONS = ["Dispatched From Depot","Received At Driventic UK","Dispatched From Driventic UK","Received At Driventic GmbH"];
+var STATUS_OPTIONS_UK = ["Dispatched From Depot","Received At Driventic UK","Arrived At Southam UK"];
+var STATUS_OPTIONS_DE = ["Dispatched From Depot","Received At Driventic UK","Dispatched From Driventic UK","Received At Driventic GmbH"];
+var DEST_OPTIONS = ["Germany / Austria","Southam UK"];
+function getStatusOptions(dest){return dest==="Southam UK"?STATUS_OPTIONS_UK:STATUS_OPTIONS_DE;}
 
 var DEFAULT_SECTIONS = [
   {id:"customer",title:"Customer Details",visible:true,fields:[
@@ -1524,7 +1532,7 @@ function initRecords(){
   if(!db){toast("Connecting...",false);return;}
   // Update thead columns based on admin status
   var thead=document.getElementById("records-thead");
-  if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th>'+(isAdmin?'<th>Update Status</th>':'')+'<th>View</th>'+(isAdmin?'<th></th>':'')+'</tr>';
+  if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Destination</th><th>Status</th>'+(isAdmin?'<th>Update Status</th>':'')+'<th>View</th>'+(isAdmin?'<th></th>':'')+'</tr>';
   g("records-body").innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#888">Loading...</td></tr>';
   db.collection("returns").orderBy("date","desc").get().then(function(snap){
     var rows=[];snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
@@ -1537,59 +1545,71 @@ function initRecords(){
 
 function renderTrackingVisual(rows){
   var el=g("tracking-visual"); if(!el) return;
-  var counts={};
-  STATUS_OPTIONS.forEach(function(s){counts[s]=0;});
-  rows.forEach(function(r){ if(counts[r.status]!==undefined) counts[r.status]++; });
 
-  var stages=[
-    {label:"Dispatched\nFrom Depot",   sub:"At Depot",         status:STATUS_OPTIONS[0], bg:"#FEF9E7",border:"#F0AD4E",text:"#9A6C0A", icon:"🏭"},
-    {label:"Received At\nDriventic UK",sub:"Southam, UK",      status:STATUS_OPTIONS[1], bg:"#EBF5FB",border:"#85B7EB",text:"#1A5276", icon:"🏢"},
-    {label:"Dispatched\nFrom UK",      sub:"En route to Europe",status:STATUS_OPTIONS[2], bg:"#1A5276",border:"#0C447C",text:"#ffffff", icon:"🚚"},
-    {label:"Received At\nGmbH",        sub:"Germany / Austria", status:STATUS_OPTIONS[3], bg:"#EAFAF1",border:"#97C459",text:"#1E8449", icon:"🇩🇪"}
+  // Split rows by destination
+  var rowsDE=rows.filter(function(r){return !r.destination||r.destination==="Germany / Austria";});
+  var rowsUK=rows.filter(function(r){return r.destination==="Southam UK";});
+
+  var stagesDE=[
+    {label:"Dispatched\nFrom Depot",   sub:"At Depot",          status:"Dispatched From Depot",         bg:"#FEF9E7",border:"#F0AD4E",text:"#9A6C0A"},
+    {label:"Received At\nDriventic UK",sub:"Southam, UK",       status:"Received At Driventic UK",       bg:"#EBF5FB",border:"#85B7EB",text:"#1A5276"},
+    {label:"Dispatched\nFrom UK",      sub:"En route to Europe", status:"Dispatched From Driventic UK",  bg:"#1A5276",border:"#0C447C",text:"#ffffff"},
+    {label:"Received At\nGmbH",        sub:"Germany / Austria",  status:"Received At Driventic GmbH",   bg:"#EAFAF1",border:"#97C459",text:"#1E8449"}
+  ];
+  var stagesUK=[
+    {label:"Dispatched\nFrom Depot",   sub:"At Depot",          status:"Dispatched From Depot",         bg:"#FEF9E7",border:"#F0AD4E",text:"#9A6C0A"},
+    {label:"Received At\nDriventic UK",sub:"Southam, UK",       status:"Received At Driventic UK",       bg:"#EBF5FB",border:"#85B7EB",text:"#1A5276"},
+    {label:"Arrived At\nSoutham UK",   sub:"Final Destination",  status:"Arrived At Southam UK",         bg:"#E8F5E9",border:"#66BB6A",text:"#1B5E20"}
   ];
 
-  var total=rows.length;
-  var svgW=820, boxW=160, boxH=90, gap=46, startX=20, y=24;
-  var svgH=boxH+80;
+  function buildPipelineSVG(stages,pipeRows,svgW,yOff){
+    var boxW=160, boxH=90, gap=46, startX=20;
+    var total=pipeRows.length;
+    var counts={};
+    stages.forEach(function(s){counts[s.status]=0;});
+    pipeRows.forEach(function(r){if(counts[r.status]!==undefined)counts[r.status]++;});
+    var svg='';
+    stages.forEach(function(st,i){
+      var x=startX+i*(boxW+gap);
+      var y=yOff;
+      var cnt=counts[st.status];
+      var pct=total>0?Math.round(cnt/total*100):0;
+      if(i>0){
+        var prevX=startX+(i-1)*(boxW+gap)+boxW;
+        svg+='<line x1="'+(prevX+4)+'" y1="'+(y+boxH/2)+'" x2="'+(x-8)+'" y2="'+(y+boxH/2)+'" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#tarr)"/>';
+      }
+      svg+='<rect x="'+x+'" y="'+y+'" width="'+boxW+'" height="'+boxH+'" rx="10" fill="'+st.bg+'" stroke="'+st.border+'" stroke-width="1.5"/>';
+      svg+='<text x="'+(x+boxW/2)+'" y="'+(y+36)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" font-weight="700" fill="'+st.text+'">'+cnt+'</text>';
+      var lines=st.label.split('\n');
+      svg+='<text x="'+(x+boxW/2)+'" y="'+(y+58)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="'+st.text+'" opacity="0.85">'+lines[0]+'</text>';
+      if(lines[1]) svg+='<text x="'+(x+boxW/2)+'" y="'+(y+70)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="'+st.text+'" opacity="0.85">'+lines[1]+'</text>';
+      svg+='<text x="'+(x+boxW/2)+'" y="'+(y+83)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="'+st.text+'" opacity="0.6">'+st.sub+'</text>';
+      var barY=y+boxH+10, barW=boxW-16, barX=x+8;
+      svg+='<rect x="'+barX+'" y="'+barY+'" width="'+barW+'" height="5" rx="2.5" fill="#e2e8f0"/>';
+      if(pct>0) svg+='<rect x="'+barX+'" y="'+barY+'" width="'+Math.round(barW*pct/100)+'" height="5" rx="2.5" fill="'+st.border+'"/>';
+      svg+='<text x="'+(x+boxW/2)+'" y="'+(barY+16)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#64748b">'+pct+'%</text>';
+    });
+    svg+='<text x="'+(startX+stages.length*(160+gap)-gap+8)+'" y="'+(yOff+boxH+28)+'" font-family="system-ui,sans-serif" font-size="10" fill="#94a3b8">'+total+' items</text>';
+    return svg;
+  }
 
-  var svg='<svg width="100%" viewBox="0 0 '+svgW+' '+svgH+'" style="display:block;overflow:visible">';
+  var svgW=820, boxH=90, rowH=boxH+50, sectionGap=36;
+  var totalH=20 + rowH + sectionGap + rowH + 10;
+  var svg='<svg width="100%" viewBox="0 0 '+svgW+' '+totalH+'" style="display:block;overflow:visible">';
   svg+='<defs><marker id="tarr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>';
 
-  stages.forEach(function(st,i){
-    var x=startX+i*(boxW+gap);
-    var cnt=counts[st.status];
-    var pct=total>0?Math.round(cnt/total*100):0;
+  // Section label: Germany / Austria
+  svg+='<text x="20" y="16" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#1A5276">🇩🇪 Germany / Austria</text>';
+  svg+=buildPipelineSVG(stagesDE,rowsDE,svgW,20);
 
-    // Arrow between stages
-    if(i>0){
-      var ax=x-gap+4, ay=y+boxH/2;
-      var prevX=startX+(i-1)*(boxW+gap)+boxW;
-      svg+='<line x1="'+(prevX+4)+'" y1="'+ay+'" x2="'+(ax+gap-8)+'" y2="'+ay+'" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#tarr)"/>';
-    }
+  // Divider
+  var divY=20+rowH+sectionGap/2-1;
+  svg+='<line x1="20" y1="'+divY+'" x2="800" y2="'+divY+'" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="6 4"/>';
 
-    // Box
-    svg+='<rect x="'+x+'" y="'+y+'" width="'+boxW+'" height="'+boxH+'" rx="10" fill="'+st.bg+'" stroke="'+st.border+'" stroke-width="1.5"/>';
-
-    // Count (large)
-    svg+='<text x="'+(x+boxW/2)+'" y="'+(y+36)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" font-weight="700" fill="'+st.text+'">'+cnt+'</text>';
-
-    // Label lines
-    var lines=st.label.split('\n');
-    svg+='<text x="'+(x+boxW/2)+'" y="'+(y+58)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="'+st.text+'" opacity="0.85">'+lines[0]+'</text>';
-    if(lines[1]) svg+='<text x="'+(x+boxW/2)+'" y="'+(y+70)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" font-weight="600" fill="'+st.text+'" opacity="0.85">'+lines[1]+'</text>';
-
-    // Sub label (location)
-    svg+='<text x="'+(x+boxW/2)+'" y="'+(y+83)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="'+st.text+'" opacity="0.6">'+st.sub+'</text>';
-
-    // Progress bar at bottom
-    var barY=y+boxH+10, barW=boxW-16, barX=x+8;
-    svg+='<rect x="'+barX+'" y="'+barY+'" width="'+barW+'" height="5" rx="2.5" fill="#e2e8f0"/>';
-    if(pct>0) svg+='<rect x="'+barX+'" y="'+barY+'" width="'+Math.round(barW*pct/100)+'" height="5" rx="2.5" fill="'+st.border+'"/>';
-    svg+='<text x="'+(x+boxW/2)+'" y="'+(barY+16)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#64748b">'+pct+'% of total</text>';
-  });
-
-  // Total label
-  svg+='<text x="'+(startX+stages.length*(boxW+gap)-gap+8)+'" y="'+(y+boxH+28)+'" font-family="system-ui,sans-serif" font-size="10" fill="#94a3b8">'+total+' total</text>';
+  // Section label: Southam UK
+  var ukY=20+rowH+sectionGap;
+  svg+='<text x="20" y="'+(ukY-4)+'" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#1B5E20">🇬🇧 Southam UK</text>';
+  svg+=buildPipelineSVG(stagesUK,rowsUK,svgW,ukY);
 
   svg+='</svg>';
   el.innerHTML=svg;
@@ -1613,9 +1633,15 @@ function renderTrackingMap(rows){
   var el=g("tracking-map"); if(!el) return;
   el.style.height="440px";
 
-  var counts={};
-  STATUS_OPTIONS.forEach(function(s){counts[s]=0;});
-  rows.forEach(function(r){if(counts[r.status]!==undefined)counts[r.status]++;});
+  // Counts split by destination
+  var countsDE={}, countsUK={};
+  STATUS_OPTIONS_DE.forEach(function(s){countsDE[s]=0;});
+  STATUS_OPTIONS_UK.forEach(function(s){countsUK[s]=0;});
+  rows.forEach(function(r){
+    var dest=r.destination||"Germany / Austria";
+    if(dest==="Southam UK"){if(countsUK[r.status]!==undefined)countsUK[r.status]++;}
+    else{if(countsDE[r.status]!==undefined)countsDE[r.status]++;}
+  });
 
   function doRender(){
     var L=window.L;
@@ -1665,44 +1691,50 @@ function renderTrackingMap(rows){
     var gmbhLat=48.676, gmbhLng=10.154;
 
     // ── Route 1: UK Depots → Southam (inbound to Southam) ──────────
+    var totalInbound=countsDE["Dispatched From Depot"]+countsUK["Dispatched From Depot"];
     var ukRoute=[[depotLat,depotLng],[53.2,-1.6],[52.8,-1.55],[southamLat,southamLng]];
-    if(counts[STATUS_OPTIONS[0]]>0){
+    if(totalInbound>0){
       if(window.L.AntPath){
         L.AntPath(ukRoute,{color:'#9A6C0A',weight:3,delay:1200,dashArray:[12,20],opacity:0.8,pulseColor:'#F0AD4E'}).addTo(map);
       } else {
         L.polyline(ukRoute,{color:'#9A6C0A',weight:2.5,dashArray:'10 7',opacity:0.75}).addTo(map);
       }
-      // Badge at midpoint of UK route — offset west to avoid Southam marker
-      L.marker([53.0,-2.3],{icon:badgeIcon(counts[STATUS_OPTIONS[0]]+' inbound to Southam','#9A6C0A')}).addTo(map);
-      // Small depot origin dot
+      L.marker([53.0,-2.3],{icon:badgeIcon(totalInbound+' inbound to Southam','#9A6C0A')}).addTo(map);
       L.circleMarker([depotLat,depotLng],{radius:7,color:'#F0AD4E',fillColor:'#FEF9E7',fillOpacity:1,weight:2}).bindTooltip('UK Depot Network').addTo(map);
     } else {
       L.polyline(ukRoute,{color:'#94a3b8',weight:1.5,dashArray:'5 5',opacity:0.35}).addTo(map);
       L.circleMarker([depotLat,depotLng],{radius:5,color:'#ccc',fillColor:'#f5f5f5',fillOpacity:1,weight:1.5}).bindTooltip('UK Depot Network').addTo(map);
     }
 
-    // ── Southam fixed marker ────────────────────────────────────────
+    // ── Southam marker — shows combined "Received At Driventic UK" count ─
+    var atSoutham=countsDE["Received At Driventic UK"]+countsUK["Received At Driventic UK"];
     L.marker([southamLat,southamLng],{
-      icon:divIcon(counts[STATUS_OPTIONS[1]],'#EBF5FB','#1A5276','#1A5276','Driventic UK','Southam, Warwickshire')
+      icon:divIcon(atSoutham,'#EBF5FB','#1A5276','#1A5276','Driventic UK','Southam, Warwickshire')
     }).addTo(map);
+
+    // ── Southam UK final destination marker (separate pin offset slightly) ─
+    if(countsUK["Arrived At Southam UK"]>0){
+      L.marker([52.22,southamLng-0.04],{
+        icon:divIcon(countsUK["Arrived At Southam UK"],'#E8F5E9','#66BB6A','#1B5E20','Arrived\nSoutham UK','Final Destination 🇬🇧')
+      }).addTo(map);
+    }
 
     // ── Route 2: Southam → Heidenheim (cross-channel transit) ───────
     var euRoute=[[southamLat,southamLng],[51.5,1.1],[51.0,4.0],[50.2,7.2],[49.2,9.0],[gmbhLat,gmbhLng]];
-    if(counts[STATUS_OPTIONS[2]]>0){
+    if(countsDE["Dispatched From Driventic UK"]>0){
       if(window.L.AntPath){
         L.AntPath(euRoute,{color:'#1A5276',weight:3,delay:900,dashArray:[14,22],opacity:0.85,pulseColor:'#85B7EB'}).addTo(map);
       } else {
         L.polyline(euRoute,{color:'#1A5276',weight:3,dashArray:'10 8',opacity:0.8}).addTo(map);
       }
-      // Badge positioned over Belgium/Netherlands to avoid overlap
-      L.marker([50.8,4.2],{icon:badgeIcon(counts[STATUS_OPTIONS[2]]+' in transit to GmbH','#1A5276')}).addTo(map);
+      L.marker([50.8,4.2],{icon:badgeIcon(countsDE["Dispatched From Driventic UK"]+' in transit to GmbH','#1A5276')}).addTo(map);
     } else {
       L.polyline(euRoute,{color:'#94a3b8',weight:1.5,dashArray:'5 5',opacity:0.35}).addTo(map);
     }
 
     // ── Heidenheim GmbH marker ──────────────────────────────────────
     L.marker([gmbhLat,gmbhLng],{
-      icon:divIcon(counts[STATUS_OPTIONS[3]],'#EAFAF1','#97C459','#1E8449','Driventic GmbH','Germany / Austria')
+      icon:divIcon(countsDE["Received At Driventic GmbH"],'#EAFAF1','#97C459','#1E8449','Driventic GmbH','Germany / Austria 🇩🇪')
     }).addTo(map);
   }
 
@@ -1765,9 +1797,14 @@ function renderRecordsTable(rows){
   }
   g("records-body").innerHTML=rows.map(function(r){
     var sc=statusClass(r.status);
-    var opts=STATUS_OPTIONS.map(function(s){
+    var dest=r.destination||"Germany / Austria";
+    var destOpts=getStatusOptions(dest);
+    var opts=destOpts.map(function(s){
       return'<option'+(s===r.status?" selected":"")+">"+s+"</option>";
     }).join("");
+    var destSelHtml=isAdmin?'<select class="dest-sel" data-id="'+r.id+'" style="font-size:11px;padding:2px 4px;border-radius:6px;border:1px solid #ccc;background:'+(dest==="Southam UK"?"#E8F5E9":"#EBF5FB")+';color:'+(dest==="Southam UK"?"#1B5E20":"#1A5276")+'">'
+      +DEST_OPTIONS.map(function(d){return'<option'+(d===dest?" selected":"")+">"+d+"</option>";}).join("")
+      +'</select>':'<span class="dest-tag '+(dest==="Southam UK"?"dest-uk":"dest-de")+'">'+dest+'</span>';
     var hasPhotos=r.items&&r.items.some(function(i){return (i.photos&&i.photos.length)||i.photo;});
     var itemSummary=(r.items?r.items.slice(0,2).map(function(i){return i.name;}).join(", ")+(r.items.length>2?" +"+(r.items.length-2)+" more":""):"-")+(hasPhotos?" &#128247;":"");
     var operator=getOperator(r)||"-";
@@ -1784,8 +1821,9 @@ function renderRecordsTable(rows){
       '<td>'+esc(operator)+'</td>'+
       '<td>'+esc(location)+'</td>'+
       '<td style="color:#666;font-size:12px">'+esc(itemSummary)+'</td>'+
+      '<td>'+destSelHtml+'</td>'+
       '<td><span class="badge s-'+sc+'">'+(r.status||STATUS_OPTIONS[0])+'</span></td>'+
-      (isAdmin?'<td><select class="stat-sel" data-id="'+r.id+'">'+opts+'</select></td>':'')+
+      (isAdmin?'<td><select class="stat-sel" data-id="'+r.id+'" data-dest="'+esc(dest)+'">'+opts+'</select></td>':'')+
       '<td><button class="view-rec-btn" data-id="'+r.id+'">View</button></td>'+
       (isAdmin?'<td><button class="del-rec-btn" data-id="'+r.id+'">&times;</button></td>':'')+
       '</tr>';
@@ -1815,6 +1853,40 @@ function renderRecordsTable(rows){
     });
   });
   } // end isAdmin status block
+
+  // Destination change — admin only
+  if(isAdmin){
+  document.querySelectorAll(".dest-sel").forEach(function(dsel){
+    dsel.addEventListener("change",function(){
+      var newDest=dsel.value;
+      var id=dsel.dataset.id;
+      var rec=allRecordRows.find(function(x){return x.id===id;});
+      db.collection("returns").doc(id).update({destination:newDest})
+        .then(function(){
+          if(rec) rec.destination=newDest;
+          // Update status dropdown options to match new destination
+          var statSel=dsel.closest("tr").querySelector(".stat-sel");
+          if(statSel){
+            var curStatus=statSel.value;
+            var newOpts=getStatusOptions(newDest);
+            statSel.innerHTML=newOpts.map(function(s){return'<option'+(s===curStatus?" selected":"")+">"+s+"</option>";}).join("");
+            statSel.dataset.dest=newDest;
+            // If current status not valid for new dest, reset to first
+            if(newOpts.indexOf(curStatus)===-1){
+              statSel.value=newOpts[0];
+              db.collection("returns").doc(id).update({status:newOpts[0]});
+              var badge=dsel.closest("tr").querySelector(".badge");
+              if(badge){badge.className="badge s-"+statusClass(newOpts[0]);badge.textContent=newOpts[0];}
+            }
+          }
+          // Update dest tag colour
+          dsel.style.background=newDest==="Southam UK"?"#E8F5E9":"#EBF5FB";
+          dsel.style.color=newDest==="Southam UK"?"#1B5E20":"#1A5276";
+          toast("Destination Updated");
+        }).catch(function(e){toast(e.message,false);});
+    });
+  });
+  } // end isAdmin destination block
 
   // FRT input — admin only
   if(isAdmin){
