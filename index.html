@@ -720,7 +720,7 @@ function buildFormSections(){
       diwaWarnInner.textContent="ALL DIRTY GEARBOXES MUST BE DRAINED OF OIL AND RETURNED IN THE ORIGINAL PACKAGING INCLUDING THE BAG AND CRATE. FAILURE TO DO THIS WILL RESULT IN COLLECTION BEING REJECTED AND CHARGES WILL APPLY. PLEASE PROVIDE IMAGES OF INSERTED BUNGS.";
       var diwaCheckRow=document.createElement("label");diwaCheckRow.style.cssText="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#7B5E00";
       var diwaCb=document.createElement("input");diwaCb.type="checkbox";diwaCb.id="diwa-oil-checkbox";diwaCb.style.cssText="width:16px;height:16px;accent-color:#f0ad4e;cursor:pointer";
-      diwaCheckRow.appendChild(diwaCb);diwaCheckRow.appendChild(document.createTextNode("I confirm I have read and understood the above requirements."));
+      diwaCheckRow.appendChild(diwaCb);diwaCheckRow.appendChild(document.createTextNode("I confirm the gearbox is fully assembled and I have read and understood the above requirements."));
       diwaWarn.appendChild(diwaWarnInner);diwaWarn.appendChild(diwaCheckRow);
       body.appendChild(diwaWarn);
       card.appendChild(body);c.appendChild(card);
@@ -1810,9 +1810,9 @@ function renderRecordsTable(rows){
     var operator=getOperator(r)||"-";
     var location=getLocation(r)||"-";
     var frtVal=r.frt||"";
-    var hasNum=/^FRT-\d{6}$/.test(frtVal);
+    var hasNum=frtVal.trim().length>0;
     var cls=hasNum?" has-number":"";
-    var display=frtVal||"FRT-";
+    var display=frtVal||"";
     var frtCell=isAdmin
           ?'<td style="white-space:nowrap;display:flex;align-items:center;gap:3px"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-" style="width:105px"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 8px;font-size:11px">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;'+(hasNum?'':'display:none')+'">&#10005;</button></td>'
           :'<td><span class="ref-tag" style="'+(hasNum?'background:#e8f5e9;color:#1b5e20':'')+'">'+(frtVal||'—')+'</span></td>';
@@ -1928,12 +1928,8 @@ function renderRecordsTable(rows){
       var id=btn.dataset.id;
       var inp=document.querySelector('.frt-input[data-id="'+id+'"]');
       if(!inp) return;
-      var isEmpty=inp.value===""||inp.value==="FRT-";
-      if(!isEmpty&&!/^FRT-\d{6}$/.test(inp.value)){
-        toast("Please enter a valid 6-digit number (e.g. FRT-123456)",false);
-        return;
-      }
-      var saveVal=isEmpty?"":inp.value;
+      var isEmpty=inp.value.trim()==="";
+      var saveVal=isEmpty?"":inp.value.trim();
       btn.textContent="Saving..."; btn.disabled=true;
       db.collection("returns").doc(id).update({frt:saveVal})
         .then(function(){
