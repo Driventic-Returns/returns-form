@@ -561,16 +561,18 @@ g("btn-login").addEventListener("click",function(){
       return;
     }
     isAdmin=(role==="admin");
-    // Sign in anonymously so Firestore security rules can verify the user is authenticated
-    firebase.auth().signInAnonymously()
-      .then(function(){
-        btn.disabled=false; btn.textContent="Sign In";
-        doLogin();
-      })
-      .catch(function(err){
-        btn.disabled=false; btn.textContent="Sign In";
-        g("login-error").textContent="Connection error. Please try again.";
-      });
+    // Load Firebase first, then sign in anonymously so Firestore rules can verify the user
+    loadScripts(function(){
+      firebase.auth().signInAnonymously()
+        .then(function(){
+          btn.disabled=false; btn.textContent="Sign In";
+          doLogin();
+        })
+        .catch(function(err){
+          btn.disabled=false; btn.textContent="Sign In";
+          g("login-error").textContent="Connection error. Please try again.";
+        });
+    });
   });
 });
 g("pw-input").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-login").click();});
