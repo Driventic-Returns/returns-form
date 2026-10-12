@@ -587,7 +587,10 @@ function doLogin(){
   });
 }
 
+var _scriptsLoaded=false;
 function loadScripts(cb){
+  if(_scriptsLoaded){cb();return;}
+  _scriptsLoaded=true;
   function one(src,next){
     var s=document.createElement("script"); s.src=src;
     s.onload=next;
