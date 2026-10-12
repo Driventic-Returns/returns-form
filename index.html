@@ -425,7 +425,7 @@ var SUPABASE_SR_URL="https://plekykkdvevqblvdayhm.supabase.co/storage/v1/object/
 var SUPABASE_SR_KEY="sb_publishable_bpd9qIOrqVxtgcfejgFriQ_QVLYWjuP";
 
 var STATUS_OPTIONS = ["Dispatched From Depot","Received At Driventic UK","Dispatched From Driventic UK","Received At Driventic GmbH"];
-var STATUS_OPTIONS_UK = ["Dispatched From Depot","Received At Driventic UK","Arrived At Southam UK"];
+var STATUS_OPTIONS_UK = ["Dispatched From Depot","Arrived At Southam UK"];
 var STATUS_OPTIONS_DE = ["Dispatched From Depot","Received At Driventic UK","Dispatched From Driventic UK","Received At Driventic GmbH"];
 var DEST_OPTIONS = ["Germany / Austria","Southam UK"];
 function getStatusOptions(dest){return dest==="Southam UK"?STATUS_OPTIONS_UK:STATUS_OPTIONS_DE;}
@@ -1557,9 +1557,8 @@ function renderTrackingVisual(rows){
     {label:"Received At\nGmbH",        sub:"Germany / Austria",  status:"Received At Driventic GmbH",   bg:"#EAFAF1",border:"#97C459",text:"#1E8449"}
   ];
   var stagesUK=[
-    {label:"Dispatched\nFrom Depot",   sub:"At Depot",          status:"Dispatched From Depot",         bg:"#FEF9E7",border:"#F0AD4E",text:"#9A6C0A"},
-    {label:"Received At\nDriventic UK",sub:"Southam, UK",       status:"Received At Driventic UK",       bg:"#EBF5FB",border:"#85B7EB",text:"#1A5276"},
-    {label:"Arrived At\nSoutham UK",   sub:"Final Destination",  status:"Arrived At Southam UK",         bg:"#E8F5E9",border:"#66BB6A",text:"#1B5E20"}
+    {label:"Dispatched\nFrom Depot",   sub:"At Depot",           status:"Dispatched From Depot",   bg:"#FEF9E7",border:"#F0AD4E",text:"#9A6C0A"},
+    {label:"Arrived At\nSoutham UK",   sub:"Final Destination",  status:"Arrived At Southam UK",   bg:"#E8F5E9",border:"#66BB6A",text:"#1B5E20"}
   ];
 
   function buildPipelineSVG(stages,pipeRows,svgW,yOff){
@@ -1706,8 +1705,8 @@ function renderTrackingMap(rows){
       L.circleMarker([depotLat,depotLng],{radius:5,color:'#ccc',fillColor:'#f5f5f5',fillOpacity:1,weight:1.5}).bindTooltip('UK Depot Network').addTo(map);
     }
 
-    // ── Southam marker — shows combined "Received At Driventic UK" count ─
-    var atSoutham=countsDE["Received At Driventic UK"]+countsUK["Received At Driventic UK"];
+    // ── Southam marker — shows DE "Received At Driventic UK" count only ─
+    var atSoutham=countsDE["Received At Driventic UK"];
     L.marker([southamLat,southamLng],{
       icon:divIcon(atSoutham,'#EBF5FB','#1A5276','#1A5276','Driventic UK','Southam, Warwickshire')
     }).addTo(map);
