@@ -131,8 +131,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rec-toolbar h2{font-size:15px;font-weight:600}
 .tbl-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#0a1929;background:#eef5f9;border-bottom:1px solid #d8e8f0}
-td{padding:10px 14px;border-bottom:1px solid #f0f0f0;color:#333;vertical-align:middle}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#0a1929;background:#eef5f9;border-bottom:1px solid #d8e8f0;white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid #f0f0f0;color:#333;vertical-align:middle;white-space:nowrap}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#fafafa}
 .ref-tag{font-family:monospace;font-size:12px;font-weight:600;background:#f0f0f0;padding:2px 8px;border-radius:4px;white-space:nowrap}
@@ -146,7 +146,7 @@ tr:hover td{background:#fafafa}
 .dest-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;margin-left:4px;vertical-align:middle}
 .dest-uk{background:#E8F5E9;color:#1B5E20}
 .dest-de{background:#EBF5FB;color:#1A5276}
-.stat-sel{padding:5px 6px;border:1px solid #e0e0e0;border-radius:6px;font-size:11px;font-family:inherit;background:#fff;cursor:pointer;outline:none;width:100%;max-width:100%}
+.stat-sel{padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;font-size:11px;font-family:inherit;background:#fff;cursor:pointer;outline:none;min-width:180px}
 .del-rec-btn{background:none;border:none;cursor:pointer;color:#ccc;font-size:18px;padding:2px 6px;border-radius:4px;transition:all .15s;line-height:1}
 .del-rec-btn:hover{color:#c0392b;background:#fef2f2}
 .view-rec-btn{background:none;border:1px solid #e0e0e0;cursor:pointer;color:#666;font-size:12px;padding:4px 10px;border-radius:4px;transition:all .15s;font-family:inherit;white-space:nowrap}
@@ -1767,7 +1767,7 @@ function renderRecordsTable(rows){
     var opts=destOpts.map(function(s){
       return'<option'+(s===r.status?" selected":"")+">"+s+"</option>";
     }).join("");
-    var destSelHtml=isAdmin?'<select class="dest-sel" data-id="'+r.id+'" style="font-size:11px;padding:2px 4px;border-radius:6px;border:1px solid #ccc;background:'+(dest==="Southam UK"?"#E8F5E9":"#EBF5FB")+';color:'+(dest==="Southam UK"?"#1B5E20":"#1A5276")+'">'
+    var destSelHtml=isAdmin?'<select class="dest-sel" data-id="'+r.id+'" style="font-size:11px;padding:2px 4px;border-radius:6px;border:1px solid #ccc;min-width:130px;background:'+(dest==="Southam UK"?"#E8F5E9":"#EBF5FB")+';color:'+(dest==="Southam UK"?"#1B5E20":"#1A5276")+'">'
       +DEST_OPTIONS.map(function(d){return'<option'+(d===dest?" selected":"")+">"+d+"</option>";}).join("")
       +'</select>':'<span class="dest-tag '+(dest==="Southam UK"?"dest-uk":"dest-de")+'">'+dest+'</span>';
     var hasPhotos=r.items&&r.items.some(function(i){return (i.photos&&i.photos.length)||i.photo;});
@@ -1780,7 +1780,7 @@ function renderRecordsTable(rows){
     var cls=hasNum?" has-number":"";
     var display=frtVal||"";
     var frtCell=isAdmin
-          ?'<td><div class="frt-cell-wrap"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-" style="width:80px;min-width:0"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;flex-shrink:0">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 6px;font-size:11px;flex-shrink:0;'+(hasNum?'':'display:none')+'">&#10005;</button></div></td>'
+          ?'<td><div class="frt-cell-wrap"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;flex-shrink:0">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 6px;font-size:11px;flex-shrink:0;'+(hasNum?'':'display:none')+'">&#10005;</button></div></td>'
           :'<td><span class="ref-tag" style="'+(hasNum?'background:#e8f5e9;color:#1b5e20':'')+'">'+(frtVal||'—')+'</span></td>';
     return'<tr>'+frtCell+
       '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
