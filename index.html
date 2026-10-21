@@ -873,9 +873,9 @@ function attachDropdownPanel(inp, getOptionsFn, allowFreeText){
   function open(){pos();render(inp.value);panel.style.display="";}
   function close(){panel.style.display="none";}
 
-  inp.addEventListener("focus",open);
-  inp.addEventListener("input",function(){render(inp.value);pos();panel.style.display="";});
-  inp.addEventListener("blur",function(){
+  function onFocus(){open();}
+  function onInput(){render(inp.value);pos();panel.style.display="";}
+  function onBlur(){
     setTimeout(close,250);
     if(!allowFreeText){
       var opts=getOptionsFn()||[];
@@ -884,11 +884,23 @@ function attachDropdownPanel(inp, getOptionsFn, allowFreeText){
       else{inp.style.borderColor="";inp.style.background="";}
     }
     updateProgress();
-  });
-  // Close on outside tap (mobile)
-  document.addEventListener("touchstart",function(e){if(!panel.contains(e.target)&&e.target!==inp)close();},{passive:true});
+  }
+  function onOutsideTouch(e){if(!panel.contains(e.target)&&e.target!==inp)close();}
+  inp.addEventListener("focus",onFocus);
+  inp.addEventListener("input",onInput);
+  inp.addEventListener("blur",onBlur);
+  document.addEventListener("touchstart",onOutsideTouch,{passive:true});
 
-  return{close:close,refresh:function(){if(panel.style.display!=="none")render(inp.value);}};
+  function destroy(){
+    close();
+    if(panel.parentNode)panel.parentNode.removeChild(panel);
+    inp.removeEventListener("focus",onFocus);
+    inp.removeEventListener("input",onInput);
+    inp.removeEventListener("blur",onBlur);
+    document.removeEventListener("touchstart",onOutsideTouch);
+    inp.style.borderColor=""; inp.style.background="";
+  }
+  return{close:close,destroy:destroy,refresh:function(){if(panel.style.display!=="none")render(inp.value);}};
 }
 
 function makeFieldEl(f){
@@ -975,12 +987,16 @@ function addItem(){
 
   // DIWA mode: switches Part Number → Bus Type, Serial Number → Transmission Type
   var btListId="btl-"+id, ttListId="ttl-"+id;
-  function isDiwa(name){ return name&&name.toUpperCase().replace(/\s/g,"").indexOf("DIWA")!==-1&&name.toUpperCase().indexOf("TRANSMISSION")!==-1; }
+  function isDiwa6(name){ return name&&name.toUpperCase().indexOf("DIWA .6")!==-1&&name.toUpperCase().indexOf("TRANSMISSION")!==-1; }
+  function isDiwa5(name){ return name&&name.toUpperCase().indexOf("DIWA .5")!==-1&&name.toUpperCase().indexOf("TRANSMISSION")!==-1; }
+  function isDiwa(name){ return isDiwa5(name)||isDiwa6(name); }
 
   function updateItemHeaders(){
-    var hasDiwa=Array.from(document.querySelectorAll("#items-list .item-row")).some(function(r){return r.dataset.diwa==="1";});
+    var rows=Array.from(document.querySelectorAll("#items-list .item-row"));
+    var hasDiwa6=rows.some(function(r){return r.dataset.diwa==="6";});
+    var hasDiwa=rows.some(function(r){return r.dataset.diwa==="5"||r.dataset.diwa==="6";});
     var hdrPart=g("items-hdr-part"); var hdrSerial=g("items-hdr-serial");
-    if(hdrPart) hdrPart.textContent=hasDiwa?"Bus Type":"Part Number";
+    if(hdrPart) hdrPart.textContent=hasDiwa6?"Bus Type":"Part Number";
     if(hdrSerial) hdrSerial.textContent=hasDiwa?"Transmission Type":"Serial Number";
   }
 
@@ -995,20 +1011,23 @@ function addItem(){
     _mobileHandlers={btClick:null,btTouch:null,ttClick:null,ttTouch:null};
   }
 
-  function applyDIWAMode(on){
-    if(_btPanel){_btPanel.close();} if(_ttPanel){_ttPanel.close();}
+  function applyDIWAMode(mode){ // mode: "6", "5", or false
+    if(_btPanel){_btPanel.destroy(); _btPanel=null;}
+    if(_ttPanel){_ttPanel.destroy(); _ttPanel=null;}
     clearMobileHandlers();
 
-    if(on){
-      row.dataset.diwa="1";
+    if(mode==="6"){
+      row.dataset.diwa="6";
+      partInp.style.display="";
       partInp.placeholder=isMobile()?"Tap to select Bus Type...":"Select Bus Type...";
       partInp.style.color="#111"; partInp.removeAttribute("list");
       partInp.setAttribute("autocomplete","off");
+      serialInp.style.display="";
+      serialInp.removeAttribute("readonly"); serialInp.style.background=""; serialInp.style.color="#111"; serialInp.style.cursor="";
       serialInp.placeholder=isMobile()?"Tap to select Transmission Type...":"Select Transmission Type...";
-      serialInp.style.color="#111"; serialInp.removeAttribute("list");
-      serialInp.setAttribute("autocomplete","off");
+      serialInp.removeAttribute("list"); serialInp.setAttribute("autocomplete","off");
       diwaSerialInp.style.display="";
-      // diwaSerialInp remains a plain free-text input always
+      partInp.value=""; serialInp.value="";
 
       if(isMobile()){
         partInp.setAttribute("readonly","readonly"); partInp.style.cursor="pointer"; partInp.style.caretColor="transparent";
@@ -1048,21 +1067,44 @@ function addItem(){
         _ttPanel=attachDropdownPanel(serialInp,function(){return(cfg.diwaMapping&&cfg.diwaMapping[partInp.value.trim()])||[];},false);
         partInp.addEventListener("input",function(){serialInp.value="";updateProgress();});
       }
+
+    } else if(mode==="5"){
+      row.dataset.diwa="5";
+      // Part Number not needed — hide it
+      partInp.style.display="none"; partInp.value="";
+      // Transmission Type auto-filled, read-only
+      serialInp.style.display="";
+      serialInp.value="D3HT0R2/W53 8.5";
+      serialInp.setAttribute("readonly","readonly");
+      serialInp.style.background="#f5f5f5"; serialInp.style.color="#555"; serialInp.style.cursor="default";
+      serialInp.placeholder="";
+      // Serial number free text
+      diwaSerialInp.style.display="";
+      diwaSerialInp.value="";
+
     } else {
       row.dataset.diwa="";
-      // Restore plain free-text inputs — clear all picker state
+      // Restore plain free-text inputs — destroy any panels and clear all state
+      partInp.style.display="";
       partInp.placeholder="Part Number"; partInp.style.color="";
       partInp.removeAttribute("readonly"); partInp.style.cursor=""; partInp.style.caretColor="";
-      partInp.removeAttribute("list");
+      partInp.removeAttribute("list"); partInp.removeAttribute("autocomplete");
+      partInp.value="";
+      serialInp.style.display="";
       serialInp.placeholder="Serial Number"; serialInp.style.color="";
-      serialInp.removeAttribute("readonly"); serialInp.style.cursor=""; serialInp.style.caretColor="";
-      serialInp.removeAttribute("list");
+      serialInp.removeAttribute("readonly"); serialInp.style.background=""; serialInp.style.cursor=""; serialInp.style.caretColor="";
+      serialInp.removeAttribute("list"); serialInp.removeAttribute("autocomplete");
+      serialInp.value="";
       diwaSerialInp.style.display="none"; diwaSerialInp.value="";
     }
-    partInp.value=""; serialInp.value="";
     updateItemHeaders();
   }
-  function checkDiwa(){ if(isDiwa(prodEl.value))applyDIWAMode(true); else applyDIWAMode(false); }
+  function checkDiwa(){
+    var n=prodEl.value;
+    if(isDiwa6(n)) applyDIWAMode("6");
+    else if(isDiwa5(n)) applyDIWAMode("5");
+    else applyDIWAMode(false);
+  }
   prodEl.addEventListener("change",function(){checkDiwa();updateProgress();});
   prodEl.addEventListener("input",function(){checkDiwa();updateProgress();});
 
@@ -1103,10 +1145,7 @@ function addItem(){
   rmBtn.addEventListener("click",function(){
     row.remove();
     // Update headers in case the last DIWA row was removed
-    var hasDiwa=Array.from(document.querySelectorAll("#items-list .item-row")).some(function(r){return r.dataset.diwa==="1";});
-    var hdrPart=g("items-hdr-part"); var hdrSerial=g("items-hdr-serial");
-    if(hdrPart) hdrPart.textContent=hasDiwa?"Bus Type":"Part Number";
-    if(hdrSerial) hdrSerial.textContent=hasDiwa?"Transmission Type":"Serial Number";
+    updateItemHeaders();
     updateProgress();
   });
   row.appendChild(prodEl);row.appendChild(partInp);row.appendChild(serialWrapper);row.appendChild(photoCell);row.appendChild(rmBtn);
@@ -1154,7 +1193,7 @@ function updateDiwaWarning(){
   var warn=g("diwa-oil-warning"); if(!warn) return;
   var hasDiwaWarn=Array.from(document.querySelectorAll("#items-list .item-row")).some(function(r){
     var name=(r.children[0]?r.children[0].value||"": "").toUpperCase();
-    return name.indexOf("DIWA .6")!==-1||name.indexOf("DIWA NXT")!==-1;
+    return name.indexOf("DIWA .6")!==-1||name.indexOf("DIWA NXT")!==-1||name.indexOf("DIWA .5")!==-1;
   });
   warn.style.display=hasDiwaWarn?"":"none";
   if(!hasDiwaWarn){var cb=g("diwa-oil-checkbox");if(cb)cb.checked=false;}
@@ -2282,6 +2321,7 @@ function saveEditedRecord(){
   var saveBtn=g("detail-btn-save"); saveBtn.textContent="Saving..."; saveBtn.disabled=true;
   db.collection("returns").doc(activeRecord.id).update(updates)
     .then(function(){
+      saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
       Object.assign(activeRecord, updates);
       toast("Record Updated");
       exitEditMode();
