@@ -924,6 +924,17 @@ function makeFieldEl(f){
         dinp.placeholder="Type SR number...";
         dinp.addEventListener("input",updateProgress);
         div.appendChild(dinp);
+        (function(){
+          var srWrap=document.createElement("div");srWrap.style.cssText="display:flex;align-items:center;gap:7px;margin-top:6px;";
+          var srCb=document.createElement("input");srCb.type="checkbox";srCb.id=f.id+"-na-cb";srCb.style.cssText="width:16px;height:16px;cursor:pointer;accent-color:#888;flex-shrink:0;";
+          var srLbl=document.createElement("label");srLbl.htmlFor=f.id+"-na-cb";srLbl.textContent="No SR number applicable";srLbl.style.cssText="font-size:12px;color:#666;cursor:pointer;user-select:none;";
+          srCb.addEventListener("change",function(){
+            if(srCb.checked){dinp.value="N/A";dinp.setAttribute("readonly","readonly");dinp.style.color="#aaa";dinp.style.background="#f5f5f5";}
+            else{dinp.value="";dinp.removeAttribute("readonly");dinp.style.color="";dinp.style.background="";}
+            updateProgress();
+          });
+          srWrap.appendChild(srCb);srWrap.appendChild(srLbl);div.appendChild(srWrap);
+        })();
       } else {
         // All other dropdowns on mobile use bottom-sheet picker
         dinp.placeholder="Tap to select...";
@@ -944,6 +955,17 @@ function makeFieldEl(f){
       dinp.placeholder="Type SR number...";
       dinp.addEventListener("input",updateProgress);
       div.appendChild(dinp);
+      (function(){
+        var srWrap=document.createElement("div");srWrap.style.cssText="display:flex;align-items:center;gap:7px;margin-top:6px;";
+        var srCb=document.createElement("input");srCb.type="checkbox";srCb.id=f.id+"-na-cb";srCb.style.cssText="width:16px;height:16px;cursor:pointer;accent-color:#888;flex-shrink:0;";
+        var srLbl=document.createElement("label");srLbl.htmlFor=f.id+"-na-cb";srLbl.textContent="No SR number applicable";srLbl.style.cssText="font-size:12px;color:#666;cursor:pointer;user-select:none;";
+        srCb.addEventListener("change",function(){
+          if(srCb.checked){dinp.value="N/A";dinp.setAttribute("readonly","readonly");dinp.style.color="#aaa";dinp.style.background="#f5f5f5";}
+          else{dinp.value="";dinp.removeAttribute("readonly");dinp.style.color="";dinp.style.background="";}
+          updateProgress();
+        });
+        srWrap.appendChild(srCb);srWrap.appendChild(srLbl);div.appendChild(srWrap);
+      })();
     } else {
       dinp.placeholder="Select or type to filter...";
       dinp.setAttribute("readonly","readonly");dinp.style.cursor="pointer";
@@ -1417,7 +1439,7 @@ function sendEmailWithPDF(pdfResult,subject,body,to){
   pdfA.style.display="none";document.body.appendChild(pdfA);pdfA.click();
   document.body.removeChild(pdfA);setTimeout(function(){URL.revokeObjectURL(url);},1000);
 
-  var toAddr=(to!==undefined&&to!==null)?to:"uksales@driventic.com,James.Berry@driventic.com";
+  var toAddr=(to!==undefined&&to!==null)?to:"uksales@driventic.com;James.Berry@driventic.com";
   // Truncate body if very long (mailto URL length limit ~2000 chars)
   var safeBody=body.length>1500?body.slice(0,1500)+"...\n(truncated)":body;
   var mailtoUrl="mailto:"+toAddr+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(safeBody);
