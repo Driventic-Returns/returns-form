@@ -978,6 +978,21 @@ function makeFieldEl(f){
   } else {
     var inp=document.createElement("input");inp.type="text";inp.id=f.id;inp.placeholder=f.placeholder||"";
     inp.addEventListener("input",updateProgress);div.appendChild(inp);
+    // SR Number field — add "No SR number applicable" checkbox
+    var isSRFieldTxt=(/\bsr\b/i.test(f.label)&&/number|num|no\.?/i.test(f.label))||(/\bsr[\s\-]?no\.?\b/i.test(f.label))||(/service\s*request/i.test(f.label));
+    if(isSRFieldTxt){
+      (function(){
+        var srWrap=document.createElement("div");srWrap.style.cssText="display:flex;align-items:center;gap:7px;margin-top:6px;";
+        var srCb=document.createElement("input");srCb.type="checkbox";srCb.id=f.id+"-na-cb";srCb.style.cssText="width:16px;height:16px;cursor:pointer;accent-color:#888;flex-shrink:0;";
+        var srLbl=document.createElement("label");srLbl.htmlFor=f.id+"-na-cb";srLbl.textContent="No SR number applicable";srLbl.style.cssText="font-size:12px;color:#666;cursor:pointer;user-select:none;";
+        srCb.addEventListener("change",function(){
+          if(srCb.checked){inp.value="N/A";inp.setAttribute("readonly","readonly");inp.style.color="#aaa";inp.style.background="#f5f5f5";}
+          else{inp.value="";inp.removeAttribute("readonly");inp.style.color="";inp.style.background="";}
+          updateProgress();
+        });
+        srWrap.appendChild(srCb);srWrap.appendChild(srLbl);div.appendChild(srWrap);
+      })();
+    }
   }
   return div;
 }
