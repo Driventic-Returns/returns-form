@@ -501,8 +501,6 @@ function fmtDateLong(str){
 function fmtDisplayDate(val){
   // Normalises any stored date to "21 Oct 2026" regardless of format
   if(!val)return "";
-  // Already "DD Mon YYYY" (has a letter in it)
-  if(/[a-zA-Z]/.test(val))return val;
   // "YYYY-MM-DD"
   if(/^\d{4}-\d{2}-\d{2}$/.test(val))return fmtDateLong(val);
   // "DD/MM/YYYY"
@@ -510,6 +508,12 @@ function fmtDisplayDate(val){
     var p=val.split("/");
     var d=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
     return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  }
+  // Any format with letters (e.g. "19 October 2026" or already "19 Oct 2026") — parse via Date
+  if(/[a-zA-Z]/.test(val)){
+    var d2=new Date(val);
+    if(!isNaN(d2.getTime()))return d2.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+    return val;
   }
   return val;
 }
@@ -2342,6 +2346,16 @@ function exitEditMode(){
   document.querySelectorAll("[id^='edit-dl-'],[id='edit-prod-dl'],[id^='edit-bt-dl-'],[id^='edit-tt-dl-']").forEach(function(el){el.remove();});
 }
 
+function deepClean(obj){
+  // Recursively remove undefined values so Firestore doesn't stall
+  if(Array.isArray(obj))return obj.map(deepClean).filter(function(v){return v!==undefined;});
+  if(obj&&typeof obj==="object"){
+    var out={};
+    Object.keys(obj).forEach(function(k){if(obj[k]!==undefined)out[k]=deepClean(obj[k]);});
+    return out;
+  }
+  return obj;
+}
 function saveEditedRecord(){
   if(!activeRecord||!db) return;
   var updates={fields:Object.assign({},activeRecord.fields), items:[]};
@@ -2350,23 +2364,32 @@ function saveEditedRecord(){
   document.querySelectorAll(".detail-field-inp").forEach(function(inp){
     var fid=inp.dataset.fieldId; var flbl=inp.dataset.fieldLabel;
     if(!fid) return;
-    updates.fields[fid]={label:flbl, value:inp.value};
+    updates.fields[fid]={label:flbl||"", value:inp.value||""};
   });
 
   // Update customer shortcuts
-  if(updates.fields["f-name"]) updates.customer={name:updates.fields["f-name"].value, orderNum:(updates.fields["f-order"]&&updates.fields["f-order"].value)||""};
-  if(updates.fields["f-reason"]) updates.reason=updates.fields["f-reason"].value;
+  if(updates.fields["f-name"]) updates.customer={name:updates.fields["f-name"].value||"", orderNum:(updates.fields["f-order"]&&updates.fields["f-order"].value)||""};
+  if(updates.fields["f-reason"]) updates.reason=updates.fields["f-reason"].value||"";
 
   // Collect item changes
   document.querySelectorAll("#edit-items-list .edit-item-row").forEach(function(row){
     var ch=row.children;
-    if(!ch[0].value.trim()) return;
+    if(!ch[0]||!ch[0].value.trim()) return;
+    var origItems=activeRecord.items||[];
+    var origItem=origItems[parseInt(row.dataset.idx)]||{};
+    var photos=(function(){
+      var a=[];try{a=JSON.parse(row.dataset.editPhotos||"[]");}catch(e){}
+      if(a.length)return a;
+      if(origItem.photos&&origItem.photos.length)return origItem.photos;
+      if(origItem.photo)return[origItem.photo];
+      return[];
+    })();
     updates.items.push({
       name:ch[0].value||"",
-      partNumber:ch[1].value||"",
-      serialNumber:ch[2].value||"",
-      diwaSerial:ch[3].value||"",
-      photos:(function(){var a=[];try{a=JSON.parse(row.dataset.editPhotos||"[]");}catch(e){}return a.length?a:(activeRecord.items[parseInt(row.dataset.idx)]||{}).photos||(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo?[(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo]:[];})()
+      partNumber:(ch[1]&&ch[1].value)||"",
+      serialNumber:(ch[2]&&ch[2].value)||"",
+      diwaSerial:(ch[3]&&ch[3].value)||"",
+      photos:photos
     });
   });
 
@@ -2378,7 +2401,7 @@ function saveEditedRecord(){
     saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
     toast("Save timed out — please try again",false);
   },15000);
-  db.collection("returns").doc(activeRecord.id).update(updates)
+  db.collection("returns").doc(activeRecord.id).update(deepClean(updates))
     .then(function(){
       if(_saveDone)return; _saveDone=true; clearTimeout(_saveTimeout);
       saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
