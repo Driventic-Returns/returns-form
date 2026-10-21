@@ -498,6 +498,21 @@ function fmtDateLong(str){
   var d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
   return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
 }
+function fmtDisplayDate(val){
+  // Normalises any stored date to "21 Oct 2026" regardless of format
+  if(!val)return "";
+  // Already "DD Mon YYYY" (has a letter in it)
+  if(/[a-zA-Z]/.test(val))return val;
+  // "YYYY-MM-DD"
+  if(/^\d{4}-\d{2}-\d{2}$/.test(val))return fmtDateLong(val);
+  // "DD/MM/YYYY"
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(val)){
+    var p=val.split("/");
+    var d=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+    return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  }
+  return val;
+}
 function todayInputVal(){
   var now=new Date();
   var y=now.getFullYear(), m=String(now.getMonth()+1).padStart(2,"0"), d=String(now.getDate()).padStart(2,"0");
@@ -1859,7 +1874,7 @@ function renderRecordsTable(rows){
           ?'<td><div class="frt-cell-wrap"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;flex-shrink:0">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 6px;font-size:11px;flex-shrink:0;'+(hasNum?'':'display:none')+'">&#10005;</button></div></td>'
           :'<td><span class="ref-tag" style="'+(hasNum?'background:#e8f5e9;color:#1b5e20':'')+'">'+(frtVal||'—')+'</span></td>';
     return'<tr>'+frtCell+
-      '<td style="white-space:nowrap">'+(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
+      '<td style="white-space:nowrap">'+fmtDisplayDate(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
       '<td>'+esc(operator)+'</td>'+
       '<td>'+esc(location)+'</td>'+
       '<td style="color:#666;font-size:12px">'+itemSummary+'</td>'+
@@ -2055,7 +2070,7 @@ g("btn-refresh").addEventListener("click",initRecords);
 function openDetail(rec){
   activeRecord=rec;
   g("detail-ref").textContent=(rec.frt||"No FRT Assigned");
-  g("detail-meta").textContent=(rec.selectedDate||fmtDateFromTs(rec.date))+" · "+(rec.status||"");
+  g("detail-meta").textContent=fmtDisplayDate(rec.selectedDate||fmtDateFromTs(rec.date))+" · "+(rec.status||"");
   var body=g("detail-body"); body.innerHTML="";
 
   // Status Timeline — show dates for each status change
@@ -2356,8 +2371,16 @@ function saveEditedRecord(){
   });
 
   var saveBtn=g("detail-btn-save"); saveBtn.textContent="Saving..."; saveBtn.disabled=true;
+  var _saveDone=false;
+  var _saveTimeout=setTimeout(function(){
+    if(_saveDone)return;
+    _saveDone=true;
+    saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
+    toast("Save timed out — please try again",false);
+  },15000);
   db.collection("returns").doc(activeRecord.id).update(updates)
     .then(function(){
+      if(_saveDone)return; _saveDone=true; clearTimeout(_saveTimeout);
       saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
       Object.assign(activeRecord, updates);
       toast("Record Updated");
@@ -2367,8 +2390,9 @@ function saveEditedRecord(){
       if(g("page-records").style.display!=="none") initRecords();
     })
     .catch(function(e){
+      if(_saveDone)return; _saveDone=true; clearTimeout(_saveTimeout);
       toast("Error: "+e.message,false);
-      saveBtn.textContent="\u2713 Save Changes"; saveBtn.disabled=false;
+      saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
     });
 }
 
