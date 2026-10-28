@@ -502,8 +502,6 @@ function fmtDateLong(str){
 function fmtDisplayDate(val){
   // Normalises any stored date to "21 Oct 2026" regardless of format
   if(!val)return "";
-  // Already "DD Mon YYYY" (has a letter in it)
-  if(/[a-zA-Z]/.test(val))return val;
   // "YYYY-MM-DD"
   if(/^\d{4}-\d{2}-\d{2}$/.test(val))return fmtDateLong(val);
   // "DD/MM/YYYY"
@@ -511,6 +509,12 @@ function fmtDisplayDate(val){
     var p=val.split("/");
     var d=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
     return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+  }
+  // Any string with letters (e.g. "19 October 2026", "19 Oct 2026") — parse and reformat
+  if(/[a-zA-Z]/.test(val)){
+    var d2=new Date(val);
+    if(!isNaN(d2.getTime()))return d2.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+    return val;
   }
   return val;
 }
@@ -1600,7 +1604,7 @@ function initRecords(){
   if(!db){toast("Connecting...",false);return;}
   // Update thead columns based on admin status
   var thead=document.getElementById("records-thead");
-  if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Destination</th><th>Status</th>'+(isAdmin?'<th>Update Status</th><th title="Parts received in good condition — no significant leaks or damage">Condition ✓</th><th></th>':'')+'</tr>';
+  if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Destination</th><th>Status</th>'+(isAdmin?'<th>Update Status</th><th title="Parts received in good condition — no significant leaks or damage" style="white-space:nowrap">Received OK ✓</th><th></th>':'')+'</tr>';
   g("records-body").innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#888">Loading...</td></tr>';
   db.collection("returns").orderBy("date","desc").get().then(function(snap){
     var rows=[];snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
@@ -1884,8 +1888,10 @@ function renderRecordsTable(rows){
     var frtCell=isAdmin
           ?'<td><div class="frt-cell-wrap"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;flex-shrink:0">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 6px;font-size:11px;flex-shrink:0;'+(hasNum?'':'display:none')+'">&#10005;</button></div></td>'
           :'<td><span class="ref-tag" style="'+(hasNum?'background:#e8f5e9;color:#1b5e20':'')+'">'+(frtVal||'—')+'</span></td>';
-    var condChecked=r.conditionOk===true;
-    var condCell=isAdmin?'<td onclick="event.stopPropagation()" style="text-align:center"><input type="checkbox" class="cond-cb" data-id="'+r.id+'" '+(condChecked?'checked':'')+' title="Received in good condition — no significant leaks or damage" style="width:16px;height:16px;cursor:pointer;accent-color:#00c4b0"></td>':'';
+    var condVal=r.conditionOk===true?"yes":r.conditionOk===false?"no":"";
+    var condBg=condVal==="yes"?"#e8f5e9":condVal==="no"?"#fff0f0":"#f9f9f9";
+    var condColor=condVal==="yes"?"#1b5e20":condVal==="no"?"#b71c1c":"#888";
+    var condCell=isAdmin?'<td onclick="event.stopPropagation()" style="text-align:center"><select class="cond-sel" data-id="'+r.id+'" style="font-size:11px;padding:2px 5px;border-radius:6px;border:1px solid #ccc;background:'+condBg+';color:'+condColor+';cursor:pointer;max-width:130px"><option value="">— Not checked —</option><option value="yes"'+(condVal==="yes"?" selected":"")+'>✓ Good Condition</option><option value="no"'+(condVal==="no"?" selected":"")+'>✗ Damage / Leak</option></select></td>':'';
     return'<tr class="rec-row" data-id="'+r.id+'" style="cursor:pointer" title="Click to open record">'+frtCell+
       '<td style="white-space:nowrap">'+fmtDisplayDate(r.selectedDate||fmtDateFromTs(r.date))+'</td>'+
       '<td>'+esc(operator)+'</td>'+
@@ -2039,15 +2045,23 @@ function renderRecordsTable(rows){
     row.addEventListener("mouseleave",function(){row.style.background="";});
   });
 
-  // Condition checkbox — admin only
+  // Condition dropdown — admin only
   if(isAdmin){
-  document.querySelectorAll(".cond-cb").forEach(function(cb){
-    cb.addEventListener("change",function(){
-      var id=cb.dataset.id;
-      var val=cb.checked;
-      db.collection("returns").doc(id).update({conditionOk:val})
-        .then(function(){toast(val?"Marked: Good Condition ✓":"Condition mark removed");})
-        .catch(function(e){toast(e.message,false);cb.checked=!val;});
+  document.querySelectorAll(".cond-sel").forEach(function(sel){
+    var prev=sel.value;
+    sel.addEventListener("change",function(){
+      var id=sel.dataset.id;
+      var v=sel.value;
+      var condOk=v==="yes"?true:v==="no"?false:null;
+      var update=v===""?{conditionOk:firebase.firestore.FieldValue.delete()}:{conditionOk:condOk};
+      sel.style.background=v==="yes"?"#e8f5e9":v==="no"?"#fff0f0":"#f9f9f9";
+      sel.style.color=v==="yes"?"#1b5e20":v==="no"?"#b71c1c":"#888";
+      db.collection("returns").doc(id).update(update)
+        .then(function(){
+          prev=v;
+          toast(v==="yes"?"✓ Marked: Good Condition":v==="no"?"✕ Marked: Damage / Leak":"Condition cleared");
+        })
+        .catch(function(e){toast(e.message,false);sel.value=prev;sel.style.background=prev==="yes"?"#e8f5e9":prev==="no"?"#fff0f0":"#f9f9f9";sel.style.color=prev==="yes"?"#1b5e20":prev==="no"?"#b71c1c":"#888";});
     });
   });
   }
