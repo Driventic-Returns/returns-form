@@ -501,6 +501,8 @@ function fmtDateLong(str){
 function fmtDisplayDate(val){
   // Normalises any stored date to "21 Oct 2026" regardless of format
   if(!val)return "";
+  // Already "DD Mon YYYY" (has a letter in it)
+  if(/[a-zA-Z]/.test(val))return val;
   // "YYYY-MM-DD"
   if(/^\d{4}-\d{2}-\d{2}$/.test(val))return fmtDateLong(val);
   // "DD/MM/YYYY"
@@ -508,12 +510,6 @@ function fmtDisplayDate(val){
     var p=val.split("/");
     var d=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
     return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-  }
-  // Any format with letters (e.g. "19 October 2026" or already "19 Oct 2026") — parse via Date
-  if(/[a-zA-Z]/.test(val)){
-    var d2=new Date(val);
-    if(!isNaN(d2.getTime()))return d2.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-    return val;
   }
   return val;
 }
@@ -1318,6 +1314,16 @@ g("btn-submit").addEventListener("click",function(){
     orderNum:(data.fields["f-order"]&&data.fields["f-order"].value)||""
   };
   data.reason=(data.fields["f-reason"]&&data.fields["f-reason"].value)||"";
+  // Save DIWA oil sign-off
+  var _hasDiwaSubmit=data.items.some(function(it){return it.name&&it.name.toUpperCase().indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;});
+  if(_hasDiwaSubmit){
+    var _diwaCbSub=g("diwa-oil-checkbox");
+    data.diwaOilSignoff={
+      signed:_diwaCbSub?_diwaCbSub.checked:false,
+      signedBy:(data.fields["f-name"]&&data.fields["f-name"].value)||"",
+      signedAt:selectedDate
+    };
+  }
   var btn=g("btn-submit");btn.textContent="Saving...";btn.disabled=true;
   db.collection("returns").add(data)
     .then(function(){
@@ -2137,7 +2143,29 @@ function openDetail(rec){
         tr.appendChild(photoTd);
         tbody.appendChild(tr);
       });
-      tbl.appendChild(tbody);secDiv.appendChild(tbl);body.appendChild(secDiv);return;
+      tbl.appendChild(tbody);secDiv.appendChild(tbl);
+      // DIWA gearbox sign-off block
+      var _hasDiwaView=rec.items.some(function(it){return it.name&&it.name.toUpperCase().indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;});
+      if(_hasDiwaView){
+        var signoff=rec.diwaOilSignoff||{};
+        var soDiv=document.createElement("div");
+        soDiv.style.cssText="margin-top:14px;padding:12px 14px;background:"+(signoff.signed?"#f0fdf4":"#fff8f0")+";border:1.5px solid "+(signoff.signed?"#86efac":"#f0ad4e")+";border-radius:8px";
+        var soTitle=document.createElement("div");soTitle.style.cssText="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#00c4b0;margin-bottom:8px";soTitle.textContent="Gearbox Oil Sign-Off";soDiv.appendChild(soTitle);
+        var soStatus=document.createElement("div");soStatus.style.cssText="font-size:13px;font-weight:700;color:"+(signoff.signed?"#166534":"#92400e");
+        soStatus.textContent=signoff.signed?"✓ Confirmed — gearbox fully assembled, oil drainage requirements read and understood":"✗ Not confirmed";
+        soDiv.appendChild(soStatus);
+        var soBy=document.createElement("div");soBy.style.cssText="font-size:12px;color:#666;margin-top:5px";
+        if(signoff.signed&&signoff.signedBy){
+          soBy.textContent="Signed by: "+signoff.signedBy+(signoff.signedAt?" · "+signoff.signedAt:"");
+        } else if(!signoff.signed&&!signoff.signedBy){
+          soBy.textContent="Not recorded on this return";soBy.style.color="#aaa";
+        } else if(!signoff.signed&&signoff.signedBy){
+          soBy.textContent="Engineer on record: "+signoff.signedBy;
+        }
+        soDiv.appendChild(soBy);
+        secDiv.appendChild(soDiv);
+      }
+      body.appendChild(secDiv);return;
     }
     // Check if this section has any stored data
     var hasData=sec.fields.some(function(f){return rec.fields&&rec.fields[f.id]&&rec.fields[f.id].value;});
@@ -2307,7 +2335,32 @@ function enterEditMode(){
         row.appendChild(prodInp); row.appendChild(partInp); row.appendChild(serialInp); row.appendChild(diwaSerialInp); row.appendChild(photoCell);
         itemsList.appendChild(row);
       });
-      secDiv.appendChild(itemsList); body.appendChild(secDiv); return;
+      secDiv.appendChild(itemsList);
+      // DIWA sign-off edit block
+      var _hasDiwaEdit=(activeRecord.items||[]).some(function(it){return it.name&&it.name.toUpperCase().indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;});
+      if(_hasDiwaEdit){
+        var soEditDiv=document.createElement("div");
+        soEditDiv.id="edit-diwa-signoff-wrap";
+        soEditDiv.style.cssText="margin-top:14px;padding:12px 14px;background:#fff8f0;border:1.5px solid #f0ad4e;border-radius:8px";
+        var soEditTitle=document.createElement("div");soEditTitle.style.cssText="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#00c4b0;margin-bottom:10px";soEditTitle.textContent="Gearbox Oil Sign-Off";soEditDiv.appendChild(soEditTitle);
+        var existSo=activeRecord.diwaOilSignoff||{};
+        // Checkbox row
+        var soChkRow=document.createElement("label");soChkRow.style.cssText="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;font-weight:600;color:#7B5E00;margin-bottom:10px";
+        var soChk=document.createElement("input");soChk.type="checkbox";soChk.id="edit-diwa-signoff-cb";soChk.checked=!!existSo.signed;soChk.style.cssText="width:17px;height:17px;cursor:pointer;accent-color:#f0ad4e;flex-shrink:0";
+        soChkRow.appendChild(soChk);soChkRow.appendChild(document.createTextNode("I confirm the gearbox is fully assembled and oil drainage requirements have been read and understood."));
+        soEditDiv.appendChild(soChkRow);
+        // Signed-by name
+        var soNameLbl=document.createElement("label");soNameLbl.className="detail-edit-lbl";soNameLbl.textContent="Signed by (name):";soEditDiv.appendChild(soNameLbl);
+        var soNameInp=document.createElement("input");soNameInp.type="text";soNameInp.id="edit-diwa-signoff-name";soNameInp.className="detail-edit-inp";soNameInp.value=existSo.signedBy||"";soNameInp.placeholder="Engineer name";soEditDiv.appendChild(soNameInp);
+        // Update background colour live
+        soChk.addEventListener("change",function(){
+          soEditDiv.style.background=soChk.checked?"#f0fdf4":"#fff8f0";
+          soEditDiv.style.borderColor=soChk.checked?"#86efac":"#f0ad4e";
+        });
+        if(existSo.signed){soEditDiv.style.background="#f0fdf4";soEditDiv.style.borderColor="#86efac";}
+        secDiv.appendChild(soEditDiv);
+      }
+      body.appendChild(secDiv); return;
     }
 
     // Field sections
@@ -2346,16 +2399,6 @@ function exitEditMode(){
   document.querySelectorAll("[id^='edit-dl-'],[id='edit-prod-dl'],[id^='edit-bt-dl-'],[id^='edit-tt-dl-']").forEach(function(el){el.remove();});
 }
 
-function deepClean(obj){
-  // Recursively remove undefined values so Firestore doesn't stall
-  if(Array.isArray(obj))return obj.map(deepClean).filter(function(v){return v!==undefined;});
-  if(obj&&typeof obj==="object"){
-    var out={};
-    Object.keys(obj).forEach(function(k){if(obj[k]!==undefined)out[k]=deepClean(obj[k]);});
-    return out;
-  }
-  return obj;
-}
 function saveEditedRecord(){
   if(!activeRecord||!db) return;
   var updates={fields:Object.assign({},activeRecord.fields), items:[]};
@@ -2364,46 +2407,39 @@ function saveEditedRecord(){
   document.querySelectorAll(".detail-field-inp").forEach(function(inp){
     var fid=inp.dataset.fieldId; var flbl=inp.dataset.fieldLabel;
     if(!fid) return;
-    updates.fields[fid]={label:flbl||"", value:inp.value||""};
+    updates.fields[fid]={label:flbl, value:inp.value};
   });
 
   // Update customer shortcuts
-  if(updates.fields["f-name"]) updates.customer={name:updates.fields["f-name"].value||"", orderNum:(updates.fields["f-order"]&&updates.fields["f-order"].value)||""};
-  if(updates.fields["f-reason"]) updates.reason=updates.fields["f-reason"].value||"";
+  if(updates.fields["f-name"]) updates.customer={name:updates.fields["f-name"].value, orderNum:(updates.fields["f-order"]&&updates.fields["f-order"].value)||""};
+  if(updates.fields["f-reason"]) updates.reason=updates.fields["f-reason"].value;
+
+  // Collect DIWA sign-off edit
+  var _editCb=g("edit-diwa-signoff-cb"); var _editNameInp=g("edit-diwa-signoff-name");
+  if(_editCb){
+    updates.diwaOilSignoff={
+      signed:_editCb.checked,
+      signedBy:(_editNameInp&&_editNameInp.value.trim())||"",
+      signedAt:(activeRecord.diwaOilSignoff&&activeRecord.diwaOilSignoff.signedAt)||activeRecord.selectedDate||""
+    };
+  }
 
   // Collect item changes
   document.querySelectorAll("#edit-items-list .edit-item-row").forEach(function(row){
     var ch=row.children;
-    if(!ch[0]||!ch[0].value.trim()) return;
-    var origItems=activeRecord.items||[];
-    var origItem=origItems[parseInt(row.dataset.idx)]||{};
-    var photos=(function(){
-      var a=[];try{a=JSON.parse(row.dataset.editPhotos||"[]");}catch(e){}
-      if(a.length)return a;
-      if(origItem.photos&&origItem.photos.length)return origItem.photos;
-      if(origItem.photo)return[origItem.photo];
-      return[];
-    })();
+    if(!ch[0].value.trim()) return;
     updates.items.push({
       name:ch[0].value||"",
-      partNumber:(ch[1]&&ch[1].value)||"",
-      serialNumber:(ch[2]&&ch[2].value)||"",
-      diwaSerial:(ch[3]&&ch[3].value)||"",
-      photos:photos
+      partNumber:ch[1].value||"",
+      serialNumber:ch[2].value||"",
+      diwaSerial:ch[3].value||"",
+      photos:(function(){var a=[];try{a=JSON.parse(row.dataset.editPhotos||"[]");}catch(e){}return a.length?a:(activeRecord.items[parseInt(row.dataset.idx)]||{}).photos||(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo?[(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo]:[];})()
     });
   });
 
   var saveBtn=g("detail-btn-save"); saveBtn.textContent="Saving..."; saveBtn.disabled=true;
-  var _saveDone=false;
-  var _saveTimeout=setTimeout(function(){
-    if(_saveDone)return;
-    _saveDone=true;
-    saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
-    toast("Save timed out — please try again",false);
-  },15000);
-  db.collection("returns").doc(activeRecord.id).update(deepClean(updates))
+  db.collection("returns").doc(activeRecord.id).update(updates)
     .then(function(){
-      if(_saveDone)return; _saveDone=true; clearTimeout(_saveTimeout);
       saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
       Object.assign(activeRecord, updates);
       toast("Record Updated");
@@ -2413,9 +2449,8 @@ function saveEditedRecord(){
       if(g("page-records").style.display!=="none") initRecords();
     })
     .catch(function(e){
-      if(_saveDone)return; _saveDone=true; clearTimeout(_saveTimeout);
       toast("Error: "+e.message,false);
-      saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
+      saveBtn.textContent="\u2713 Save Changes"; saveBtn.disabled=false;
     });
 }
 
