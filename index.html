@@ -2443,25 +2443,39 @@ function saveEditedRecord(){
       name:ch[0].value||"",
       partNumber:ch[1].value||"",
       serialNumber:ch[2].value||"",
-      diwaSerial:ch[3].value||"",
+      diwaSerial:(ch[3]&&ch[3].value)||"",
       photos:(function(){var a=[];try{a=JSON.parse(row.dataset.editPhotos||"[]");}catch(e){}return a.length?a:(activeRecord.items[parseInt(row.dataset.idx)]||{}).photos||(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo?[(activeRecord.items[parseInt(row.dataset.idx)]||{}).photo]:[];})()
     });
   });
 
+  // Strip undefined — Firestore silently hangs if payload contains undefined
+  function _deepClean(obj){
+    if(Array.isArray(obj))return obj.map(_deepClean).filter(function(v){return v!==undefined;});
+    if(obj&&typeof obj==="object"){var out={};Object.keys(obj).forEach(function(k){if(obj[k]!==undefined)out[k]=_deepClean(obj[k]);});return out;}
+    return obj;
+  }
+
   var saveBtn=g("detail-btn-save"); saveBtn.textContent="Saving..."; saveBtn.disabled=true;
-  db.collection("returns").doc(activeRecord.id).update(updates)
+  var _saveDone=false;
+  var _saveTimeout=setTimeout(function(){
+    if(_saveDone)return; _saveDone=true;
+    saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
+    toast("Save timed out — please try again",false);
+  },15000);
+  db.collection("returns").doc(activeRecord.id).update(_deepClean(updates))
     .then(function(){
+      if(_saveDone)return; _saveDone=true; clearTimeout(_saveTimeout);
       saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
       Object.assign(activeRecord, updates);
       toast("Record Updated");
       exitEditMode();
       openDetail(activeRecord);
-      // Refresh records table in background
       if(g("page-records").style.display!=="none") initRecords();
     })
     .catch(function(e){
+      if(_saveDone)return; _saveDone=true; clearTimeout(_saveTimeout);
       toast("Error: "+e.message,false);
-      saveBtn.textContent="\u2713 Save Changes"; saveBtn.disabled=false;
+      saveBtn.textContent="✓ Save Changes"; saveBtn.disabled=false;
     });
 }
 
