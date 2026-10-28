@@ -2351,7 +2351,18 @@ function enterEditMode(){
         soEditDiv.appendChild(soChkRow);
         // Signed-by name
         var soNameLbl=document.createElement("label");soNameLbl.className="detail-edit-lbl";soNameLbl.textContent="Signed by (name):";soEditDiv.appendChild(soNameLbl);
-        var soNameInp=document.createElement("input");soNameInp.type="text";soNameInp.id="edit-diwa-signoff-name";soNameInp.className="detail-edit-inp";soNameInp.value=existSo.signedBy||"";soNameInp.placeholder="Engineer name";soEditDiv.appendChild(soNameInp);
+        // Build engineer name dropdown from cfg.sections if available
+        var _engOpts=[];
+        if(cfg&&cfg.sections){cfg.sections.forEach(function(sec){(sec.fields||[]).forEach(function(f){if(f.type==="dropdown"&&f.label&&f.label.toLowerCase().indexOf("engineer")!==-1&&Array.isArray(f.options)){_engOpts=f.options;}});});}
+        var soNameInp;
+        if(_engOpts.length>0){
+          soNameInp=document.createElement("select");soNameInp.id="edit-diwa-signoff-name";soNameInp.className="detail-edit-inp";soNameInp.style.cssText="background:#fff;cursor:pointer;";
+          var _blankOpt=document.createElement("option");_blankOpt.value="";_blankOpt.textContent="— Select engineer —";soNameInp.appendChild(_blankOpt);
+          _engOpts.forEach(function(o){var opt=document.createElement("option");opt.value=o;opt.textContent=o;if(o===(existSo.signedBy||""))opt.selected=true;soNameInp.appendChild(opt);});
+        } else {
+          soNameInp=document.createElement("input");soNameInp.type="text";soNameInp.id="edit-diwa-signoff-name";soNameInp.className="detail-edit-inp";soNameInp.value=existSo.signedBy||"";soNameInp.placeholder="Engineer name";
+        }
+        soEditDiv.appendChild(soNameInp);
         // Update background colour live
         soChk.addEventListener("change",function(){
           soEditDiv.style.background=soChk.checked?"#f0fdf4":"#fff8f0";
