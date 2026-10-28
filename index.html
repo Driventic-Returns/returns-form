@@ -2140,6 +2140,16 @@ function openDetail(rec){
       row.appendChild(dateEl);
       tlSec.appendChild(row);
     });
+    // Condition received indicator — show if set
+    if(rec.conditionOk===true||rec.conditionOk===false){
+      var condRow=document.createElement("div");
+      condRow.style.cssText="display:flex;align-items:center;gap:9px;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;"
+        +(rec.conditionOk?"background:#e8f5e9;color:#1b5e20;border:1.5px solid #a5d6a7":"background:#fff0f0;color:#b71c1c;border:1.5px solid #ef9a9a");
+      condRow.innerHTML=(rec.conditionOk
+        ?"<span style='font-size:15px'>✓</span> Received in Good Condition"
+        :"<span style='font-size:15px'>✗</span> Damage / Leak Reported");
+      tlSec.appendChild(condRow);
+    }
     body.appendChild(tlSec);
   }
 
