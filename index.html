@@ -1700,6 +1700,34 @@ function initTracking(){
 }
 g("btn-refresh-tracking").addEventListener("click",initTracking);
 
+// ── Nominatim geocoder with localStorage cache ────────────────────────────
+var _geoCache=(function(){try{return JSON.parse(localStorage.getItem("_driventic_geocache")||"{}");}catch(e){return{};}})();
+function _saveGeoCache(){try{localStorage.setItem("_driventic_geocache",JSON.stringify(_geoCache));}catch(e){}}
+function geocodeLocation(name,cb){
+  if(_geoCache[name]){cb(_geoCache[name]);return;}
+  var url="https://nominatim.openstreetmap.org/search?q="+encodeURIComponent(name+", UK")+"&format=json&limit=1&countrycodes=gb";
+  fetch(url,{headers:{"Accept":"application/json","User-Agent":"DriventicReturnsPortal/1.0"}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(data&&data[0]){
+        var coord={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+        _geoCache[name]=coord; _saveGeoCache(); cb(coord);
+      } else {
+        _geoCache[name]=null; _saveGeoCache(); cb(null);
+      }
+    }).catch(function(){cb(null);});
+}
+function geocodeAll(names,cb){
+  var results={};var pending=names.length;
+  if(!pending){cb(results);return;}
+  function tick(n,coord){results[n]=coord;if(--pending===0)cb(results);}
+  names.forEach(function(n,i){
+    // Rate-limit: 1 req/s per Nominatim ToS; use cache hits instantly
+    if(_geoCache.hasOwnProperty(n)){tick(n,_geoCache[n]);}
+    else{setTimeout(function(){geocodeLocation(n,function(c){tick(n,c);});},i*1100);}
+  });
+}
+
 function renderTrackingMap(rows){
   var el=g("tracking-map"); if(!el) return;
   el.style.height="440px";
@@ -1714,7 +1742,19 @@ function renderTrackingMap(rows){
     else{if(countsDE[r.status]!==undefined)countsDE[r.status]++;}
   });
 
-  function doRender(){
+  // Build per-location groups for individual depot pins
+  var locationGroups={};
+  rows.forEach(function(r){
+    var loc=getLocation(r)||"";
+    if(!loc||loc==="Southam"||loc.toLowerCase().indexOf("southam")!==-1) return;
+    if(!locationGroups[loc]) locationGroups[loc]={items:[],statuses:{}};
+    locationGroups[loc].items.push(r);
+    var s=r.status||"Unknown";
+    locationGroups[loc].statuses[s]=(locationGroups[loc].statuses[s]||0)+1;
+  });
+  var uniqueLocs=Object.keys(locationGroups);
+
+  function doRender(geoResults){
     var L=window.L;
     if(window._trackingMap){window._trackingMap.remove();window._trackingMap=null;}
 
@@ -1761,20 +1801,50 @@ function renderTrackingMap(rows){
     // Heidenheim an der Brenz, Germany (actual)
     var gmbhLat=48.676, gmbhLng=10.154;
 
-    // ── Route 1: UK Depots → Southam (inbound to Southam) ──────────
+    // ── Individual depot pins from geocoded locations ───────────────
     var totalInbound=countsDE["Dispatched From Depot"]+countsUK["Dispatched From Depot"];
-    var ukRoute=[[depotLat,depotLng],[53.2,-1.6],[52.8,-1.55],[southamLat,southamLng]];
-    if(totalInbound>0){
+    var anyPinDrawn=false;
+    uniqueLocs.forEach(function(loc){
+      var coord=geoResults&&geoResults[loc];
+      if(!coord) return;
+      var grp=locationGroups[loc];
+      var count=grp.items.length;
+      var statusLines=Object.keys(grp.statuses).map(function(s){return grp.statuses[s]+'× '+s;}).join('<br>');
+      // Draw ant-path line from this depot to Southam
+      var route=[[coord.lat,coord.lng],[southamLat,southamLng]];
       if(window.L.AntPath){
-        L.AntPath(ukRoute,{color:'#9A6C0A',weight:3,delay:1200,dashArray:[12,20],opacity:0.8,pulseColor:'#F0AD4E'}).addTo(map);
+        L.AntPath(route,{color:'#9A6C0A',weight:2.5,delay:1200,dashArray:[10,18],opacity:0.7,pulseColor:'#F0AD4E'}).addTo(map);
       } else {
-        L.polyline(ukRoute,{color:'#9A6C0A',weight:2.5,dashArray:'10 7',opacity:0.75}).addTo(map);
+        L.polyline(route,{color:'#9A6C0A',weight:2,dashArray:'8 6',opacity:0.6}).addTo(map);
       }
-      L.marker([53.0,-2.3],{icon:badgeIcon(totalInbound+' inbound to Southam','#9A6C0A')}).addTo(map);
-      L.circleMarker([depotLat,depotLng],{radius:7,color:'#F0AD4E',fillColor:'#FEF9E7',fillOpacity:1,weight:2}).bindTooltip('UK Depot Network').addTo(map);
-    } else {
-      L.polyline(ukRoute,{color:'#94a3b8',weight:1.5,dashArray:'5 5',opacity:0.35}).addTo(map);
-      L.circleMarker([depotLat,depotLng],{radius:5,color:'#ccc',fillColor:'#f5f5f5',fillOpacity:1,weight:1.5}).bindTooltip('UK Depot Network').addTo(map);
+      // Depot pin
+      var pinIcon=L.divIcon({
+        className:'',
+        html:'<div style="text-align:center;width:110px">'+
+          '<div style="width:36px;height:36px;border-radius:50%;background:#FEF9E7;border:3px solid #F0AD4E;display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.25)">'+
+          '<span style="font-size:14px;font-weight:700;color:#9A6C0A">'+count+'</span></div>'+
+          '<div style="background:#FEF9E7;border:1.5px solid #F0AD4E;border-radius:6px;padding:3px 7px;margin-top:3px;white-space:nowrap;display:inline-block;box-shadow:0 1px 4px rgba(0,0,0,.12)">'+
+          '<div style="font-size:10px;font-weight:700;color:#9A6C0A">'+loc+'</div>'+
+          '<div style="font-size:9px;color:#9A6C0A;opacity:.8">Depot</div></div></div>',
+        iconSize:[110,80],iconAnchor:[55,18]
+      });
+      L.marker([coord.lat,coord.lng],{icon:pinIcon})
+        .bindPopup('<b>'+loc+'</b><br>'+count+' item'+(count!==1?'s':'')+' in transit<br><small>'+statusLines+'</small>')
+        .addTo(map);
+      anyPinDrawn=true;
+    });
+    // Fallback generic pin if no locations geocoded
+    if(!anyPinDrawn){
+      var depotLat=53.8,depotLng=-1.55;
+      var ukRoute=[[depotLat,depotLng],[53.2,-1.6],[52.8,-1.55],[southamLat,southamLng]];
+      if(totalInbound>0){
+        if(window.L.AntPath){L.AntPath(ukRoute,{color:'#9A6C0A',weight:3,delay:1200,dashArray:[12,20],opacity:0.8,pulseColor:'#F0AD4E'}).addTo(map);}
+        else{L.polyline(ukRoute,{color:'#9A6C0A',weight:2.5,dashArray:'10 7',opacity:0.75}).addTo(map);}
+        L.circleMarker([depotLat,depotLng],{radius:7,color:'#F0AD4E',fillColor:'#FEF9E7',fillOpacity:1,weight:2}).bindTooltip('UK Depot Network').addTo(map);
+      } else {
+        L.polyline(ukRoute,{color:'#94a3b8',weight:1.5,dashArray:'5 5',opacity:0.35}).addTo(map);
+        L.circleMarker([depotLat,depotLng],{radius:5,color:'#ccc',fillColor:'#f5f5f5',fillOpacity:1,weight:1.5}).bindTooltip('UK Depot Network').addTo(map);
+      }
     }
 
     // ── Southam marker — shows DE "Received At Driventic UK" count only ─
@@ -1810,11 +1880,15 @@ function renderTrackingMap(rows){
   }
 
   function loadAntPath(){
-    if(window.L.AntPath){doRender();return;}
-    var ap=document.createElement('script');
-    ap.src='https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js';
-    ap.onload=doRender; ap.onerror=doRender;
-    document.head.appendChild(ap);
+    function afterGeo(geoResults){
+      if(window.L.AntPath){doRender(geoResults);return;}
+      var ap=document.createElement('script');
+      ap.src='https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js';
+      ap.onload=function(){doRender(geoResults);}; ap.onerror=function(){doRender(geoResults);};
+      document.head.appendChild(ap);
+    }
+    if(uniqueLocs.length>0){geocodeAll(uniqueLocs,afterGeo);}
+    else{afterGeo({});}
   }
 
   if(window.L){loadAntPath();return;}
