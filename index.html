@@ -764,6 +764,15 @@ function buildFormSections(){
         selectedDate=fmtDateLong(selectedDateRaw)||selectedDate;
       });
       dateDiv.appendChild(dateLbl2);dateDiv.appendChild(dateInp2);body.appendChild(dateDiv);
+      // Self-condemn checkbox
+      var scWrap=document.createElement("div");scWrap.style.cssText="display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 13px;background:#fff8f0;border:1.5px solid #f0ad4e;border-radius:8px;cursor:pointer";
+      var scCb=document.createElement("input");scCb.type="checkbox";scCb.id="self-condemn-cb";scCb.style.cssText="width:17px;height:17px;cursor:pointer;accent-color:#f0ad4e;flex-shrink:0";
+      var scLbl=document.createElement("label");scLbl.htmlFor="self-condemn-cb";scLbl.style.cssText="font-size:13px;font-weight:600;color:#7B5E00;cursor:pointer;user-select:none";scLbl.textContent="Operator Self Condemn / Self Return";
+      var scSub=document.createElement("div");scSub.style.cssText="font-size:11px;color:#9A7820;margin-top:2px";scSub.textContent="Part condemned or returned directly by the operator — not tested or confirmed by Driventic";
+      var scTextWrap=document.createElement("div");scTextWrap.appendChild(scLbl);scTextWrap.appendChild(scSub);
+      scWrap.appendChild(scCb);scWrap.appendChild(scTextWrap);
+      scWrap.addEventListener("click",function(e){if(e.target!==scCb){scCb.checked=!scCb.checked;}});
+      body.appendChild(scWrap);
     }
     card.appendChild(body);c.appendChild(card);
   });
@@ -1261,6 +1270,14 @@ g("btn-submit").addEventListener("click",function(){
   var items=getItems();
   if(!items.length){toast("Please Add At Least One Item",false);return;}
   if(!db){toast("Still Connecting...",false);return;}
+  // Check at least one photo is attached
+  var _hasPhoto=items.some(function(it){return it.photos&&it.photos.length>0;});
+  if(!_hasPhoto){
+    toast("Please Attach At Least One Photo Before Submitting",false);
+    var firstPhotoBtn=document.querySelector("#items-list .item-row .photo-add-btn");
+    if(firstPhotoBtn){firstPhotoBtn.style.boxShadow="0 0 0 3px rgba(240,173,78,.55)";setTimeout(function(){if(firstPhotoBtn)firstPhotoBtn.style.boxShadow="";},2500);}
+    return;
+  }
   // Check DIWA oil warning checkbox
   var diwaCb=g("diwa-oil-checkbox");
   if(diwaCb&&g("diwa-oil-warning")&&g("diwa-oil-warning").style.display!=="none"&&!diwaCb.checked){
@@ -1319,6 +1336,7 @@ g("btn-submit").addEventListener("click",function(){
     orderNum:(data.fields["f-order"]&&data.fields["f-order"].value)||""
   };
   data.reason=(data.fields["f-reason"]&&data.fields["f-reason"].value)||"";
+  var _scCb=g("self-condemn-cb"); data.selfCondemn=_scCb?_scCb.checked:false;
   // Save DIWA oil sign-off
   var _hasDiwaSubmit=data.items.some(function(it){return it.name&&it.name.toUpperCase().indexOf("DIWA")!==-1&&it.name.toUpperCase().indexOf("TRANSMISSION")!==-1;});
   if(_hasDiwaSubmit){
@@ -2319,6 +2337,14 @@ function openDetail(rec){
     body.appendChild(secDiv);
   }
 
+  // Self-condemn indicator
+  if(rec.selfCondemn===true){
+    var scView=document.createElement("div");
+    scView.style.cssText="display:flex;align-items:center;gap:9px;margin-top:12px;padding:10px 13px;background:#fff8f0;border:1.5px solid #f0ad4e;border-radius:8px;font-size:13px;font-weight:600;color:#7B5E00";
+    scView.innerHTML='<span style="font-size:16px;flex-shrink:0">⚠️</span><div><div>Operator Self Condemn / Self Return</div><div style="font-size:11px;font-weight:400;color:#9A7820;margin-top:2px">Part condemned or returned directly by the operator — not tested or confirmed by Driventic</div></div>';
+    body.insertBefore(scView,body.firstChild);
+  }
+
   g("detail-bg").classList.add("open");
   setDetailEditMode(false);
 }
@@ -2520,6 +2546,20 @@ function enterEditMode(){
     });
     if(hasField) body.appendChild(secDiv);
   });
+
+  // Self-condemn toggle in edit mode
+  var scEditDiv=document.createElement("div");
+  scEditDiv.style.cssText="display:flex;align-items:center;gap:9px;margin-top:12px;padding:11px 13px;background:"+(activeRecord.selfCondemn?"#fff8f0":"#f9f9f9")+";border:1.5px solid "+(activeRecord.selfCondemn?"#f0ad4e":"#e0e0e0")+";border-radius:8px;cursor:pointer";
+  var scEditCb=document.createElement("input");scEditCb.type="checkbox";scEditCb.id="edit-self-condemn-cb";scEditCb.checked=!!activeRecord.selfCondemn;scEditCb.style.cssText="width:17px;height:17px;cursor:pointer;accent-color:#f0ad4e;flex-shrink:0";
+  var scEditLbl=document.createElement("label");scEditLbl.htmlFor="edit-self-condemn-cb";scEditLbl.style.cssText="font-size:13px;font-weight:600;color:#7B5E00;cursor:pointer;user-select:none";scEditLbl.textContent="Operator Self Condemn / Self Return";
+  var scEditSub=document.createElement("div");scEditSub.style.cssText="font-size:11px;color:#9A7820;margin-top:2px";scEditSub.textContent="Part condemned or returned directly by the operator — not tested or confirmed by Driventic";
+  var scEditTextWrap=document.createElement("div");scEditTextWrap.appendChild(scEditLbl);scEditTextWrap.appendChild(scEditSub);
+  scEditDiv.appendChild(scEditCb);scEditDiv.appendChild(scEditTextWrap);
+  scEditCb.addEventListener("change",function(){
+    scEditDiv.style.background=scEditCb.checked?"#fff8f0":"#f9f9f9";
+    scEditDiv.style.borderColor=scEditCb.checked?"#f0ad4e":"#e0e0e0";
+  });
+  body.appendChild(scEditDiv);
 }
 
 function exitEditMode(){
@@ -2542,6 +2582,10 @@ function saveEditedRecord(){
   // Update customer shortcuts
   if(updates.fields["f-name"]) updates.customer={name:updates.fields["f-name"].value, orderNum:(updates.fields["f-order"]&&updates.fields["f-order"].value)||""};
   if(updates.fields["f-reason"]) updates.reason=updates.fields["f-reason"].value;
+
+  // Collect self-condemn edit
+  var _scEditCb=g("edit-self-condemn-cb");
+  if(_scEditCb) updates.selfCondemn=_scEditCb.checked;
 
   // Collect DIWA sign-off edit
   var _editCb=g("edit-diwa-signoff-cb"); var _editNameInp=g("edit-diwa-signoff-name");
