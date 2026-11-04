@@ -1761,14 +1761,15 @@ function renderTrackingMap(rows){
   });
 
   // Build per-location groups for individual depot pins
+  // Only show depot pins for items still at depot (Dispatched From Depot)
   var locationGroups={};
   rows.forEach(function(r){
+    if(r.status!=="Dispatched From Depot") return;
     var loc=getLocation(r)||"";
-    if(!loc||loc==="Southam"||loc.toLowerCase().indexOf("southam")!==-1) return;
+    if(!loc||loc.toLowerCase().indexOf("southam")!==-1) return;
     if(!locationGroups[loc]) locationGroups[loc]={items:[],statuses:{}};
     locationGroups[loc].items.push(r);
-    var s=r.status||"Unknown";
-    locationGroups[loc].statuses[s]=(locationGroups[loc].statuses[s]||0)+1;
+    locationGroups[loc].statuses["Dispatched From Depot"]=(locationGroups[loc].statuses["Dispatched From Depot"]||0)+1;
   });
   var uniqueLocs=Object.keys(locationGroups);
 
