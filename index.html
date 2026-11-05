@@ -1417,6 +1417,12 @@ function buildEmailBody(formName,recRef,recDate,rec,type,formSections){
       lines.push("--- "+(sec.title||fs.title)+" ---");
       allowed.forEach(function(f){var v=rv(f.id);if(v) lines.push(rl(f.id,f.label)+": "+v);});
       lines.push("");
+      // Insert self-condemn notice immediately after customer details
+      if(fs.id==="customer"&&rec&&rec.selfCondemn===true){
+        lines.push("! Operator Self Condemn / Self Return");
+        lines.push("Part condemned or returned directly by the operator — not tested or confirmed by Driventic.");
+        lines.push("");
+      }
     }
 
     else if(sec.type==="items"){
@@ -1484,12 +1490,6 @@ function buildEmailBody(formName,recRef,recDate,rec,type,formSections){
       lines.push("");
     }
   });
-
-  if(rec&&rec.selfCondemn===true){
-    lines.push("--- Operator Self Condemn / Self Return ---");
-    lines.push("⚠ This part was condemned or returned directly by the operator — not tested or confirmed by Driventic.");
-    lines.push("");
-  }
 
   if(type==="company"){
     lines.push("---");
