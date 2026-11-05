@@ -2217,25 +2217,30 @@ function openDetail(rec){
   g("detail-meta").textContent=fmtDisplayDate(rec.selectedDate||fmtDateFromTs(rec.date))+" · "+(rec.status||"");
   var body=g("detail-body"); body.innerHTML="";
 
-  // Status Timeline — show dates for each status change
+  // Status Timeline — always show full transport history for the record's destination
   var statusDates=rec.statusDates||{};
-  var hasAnyDates=STATUS_OPTIONS.some(function(s){return statusDates[s];});
-  if(hasAnyDates||rec.status){
+  var recDest=rec.destination||"Germany / Austria";
+  var tlStages=getStatusOptions(recDest);
+  if(rec.status){
     var tlSec=document.createElement("div");tlSec.className="detail-sec";
     var tlTitle=document.createElement("div");tlTitle.className="detail-sec-title";tlTitle.textContent="Status Timeline";
     tlSec.appendChild(tlTitle);
-    STATUS_OPTIONS.forEach(function(s){
+    // Find index of current status so we know which stages have been reached
+    var curIdx=tlStages.indexOf(rec.status);
+    tlStages.forEach(function(s,i){
       var sc=statusClass(s);
-      var dateStr=statusDates[s]||"";
+      // For "Dispatched From Depot" fall back to submission date if no date stored
+      var dateStr=statusDates[s]||(s==="Dispatched From Depot"?(rec.selectedDate||fmtDateFromTs(rec.date)||""):"");
       var isActive=s===rec.status;
-      if(!dateStr&&!isActive) return; // only show statuses that have dates or are current
+      var isPast=i<curIdx;
+      var isFuture=i>curIdx;
       var row=document.createElement("div");
-      row.style.cssText="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;flex-wrap:wrap;";
+      row.style.cssText="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;flex-wrap:wrap;"+(isFuture?"opacity:0.38;":"");
       var badge=document.createElement("span");badge.className="badge s-"+sc;badge.textContent=s;
       badge.style.flexShrink="0";
       var dateEl=document.createElement("span");
       dateEl.style.cssText="font-size:12px;color:"+(dateStr?"#555":"#bbb")+";margin-left:auto;";
-      dateEl.textContent=dateStr||"Date not recorded";
+      dateEl.textContent=isFuture?"Pending":(dateStr||"Date not recorded");
       row.appendChild(badge);
       row.appendChild(dateEl);
       tlSec.appendChild(row);
