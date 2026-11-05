@@ -1320,6 +1320,7 @@ g("btn-submit").addEventListener("click",function(){
     date:firebase.firestore.FieldValue.serverTimestamp(),
     selectedDate:selectedDate,
     status:STATUS_OPTIONS[0],
+    statusDates:{"Dispatched From Depot":fmtDateLong(selectedDateRaw)||selectedDate},
     items:items,fields:{}
   };
   cfg.sections.forEach(function(sec){
@@ -1483,6 +1484,12 @@ function buildEmailBody(formName,recRef,recDate,rec,type,formSections){
       lines.push("");
     }
   });
+
+  if(rec&&rec.selfCondemn===true){
+    lines.push("--- Operator Self Condemn / Self Return ---");
+    lines.push("⚠ This part was condemned or returned directly by the operator — not tested or confirmed by Driventic.");
+    lines.push("");
+  }
 
   if(type==="company"){
     lines.push("---");
@@ -3315,6 +3322,17 @@ function exportPDF(rec, type, sections, returnBlob){
       doc.text(clines,m+2,y); y+=clines.length*5.5+6;
     }
   });
+
+  // Self-condemn / self-return notice
+  if(rec&&rec.selfCondemn===true){
+    doc.setFillColor(255,248,240); doc.rect(m,y,cw,14,"F");
+    doc.setDrawColor(240,173,78); doc.rect(m,y,cw,14,"S");
+    doc.setFontSize(8.5); doc.setFont("helvetica","bold"); doc.setTextColor(123,94,0);
+    doc.text("⚠  Operator Self Condemn / Self Return",m+4,y+6);
+    doc.setFontSize(7.5); doc.setFont("helvetica","normal"); doc.setTextColor(154,120,32);
+    doc.text("Part condemned or returned directly by the operator — not tested or confirmed by Driventic.",m+4,y+11);
+    y+=20;
+  }
 
   // Footer
   doc.setFontSize(7); doc.setTextColor(160,160,160);
