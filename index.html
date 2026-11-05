@@ -3178,6 +3178,19 @@ function exportPDF(rec, type, sections, returnBlob){
   doc.setTextColor(17,17,17);
   var y=32;
 
+  var _scInserted=false;
+  function _insertSCBox(){
+    if(_scInserted||!rec||rec.selfCondemn!==true) return;
+    _scInserted=true;
+    doc.setFillColor(255,248,240); doc.rect(m,y,cw,16,"F");
+    doc.setDrawColor(240,173,78); doc.setLineWidth(0.5); doc.rect(m,y,cw,16,"S"); doc.setLineWidth(0.2);
+    doc.setFontSize(8.5); doc.setFont("helvetica","bold"); doc.setTextColor(123,94,0);
+    doc.text("! Operator Self Condemn / Self Return",m+5,y+7);
+    doc.setFontSize(7.5); doc.setFont("helvetica","normal"); doc.setTextColor(154,120,32);
+    doc.text("Part condemned or returned directly by the operator — not tested or confirmed by Driventic.",m+5,y+13);
+    y+=22;
+  }
+
   pc.sections.forEach(function(sec){
     if(!sec.visible) return;
 
@@ -3218,6 +3231,8 @@ function exportPDF(rec, type, sections, returnBlob){
         }
       }
       y+=4;
+      // Insert self-condemn box right after customer details section
+      if(formSec&&formSec.id==="customer") _insertSCBox();
     }
 
     else if(sec.type==="items"){
@@ -3336,17 +3351,6 @@ function exportPDF(rec, type, sections, returnBlob){
       doc.text(clines,m+2,y); y+=clines.length*5.5+6;
     }
   });
-
-  // Self-condemn / self-return notice
-  if(rec&&rec.selfCondemn===true){
-    doc.setFillColor(255,248,240); doc.rect(m,y,cw,14,"F");
-    doc.setDrawColor(240,173,78); doc.rect(m,y,cw,14,"S");
-    doc.setFontSize(8.5); doc.setFont("helvetica","bold"); doc.setTextColor(123,94,0);
-    doc.text("⚠  Operator Self Condemn / Self Return",m+4,y+6);
-    doc.setFontSize(7.5); doc.setFont("helvetica","normal"); doc.setTextColor(154,120,32);
-    doc.text("Part condemned or returned directly by the operator — not tested or confirmed by Driventic.",m+4,y+11);
-    y+=20;
-  }
 
   // Footer
   doc.setFontSize(7); doc.setTextColor(160,160,160);
