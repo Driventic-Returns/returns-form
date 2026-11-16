@@ -843,8 +843,20 @@ function showMobilePicker(options, currentVal, title, onSelect){
       item.appendChild(txt);
       if(isSel){var ck=document.createElement("span");ck.textContent="✓";ck.style.cssText="color:#00c4b0;font-weight:700;flex-shrink:0";item.appendChild(ck);}
       function pick(e){e.preventDefault();e.stopPropagation();onSelect(opt);cleanup();}
-      item.addEventListener("touchend",pick);item.addEventListener("click",pick);
-      item.addEventListener("touchstart",function(){item.style.background="#f0faf9";},{passive:true});
+      // Track touch start position — only select if finger hasn't scrolled more than 8px
+      var _tsY=null;
+      item.addEventListener("touchstart",function(e){
+        _tsY=e.touches[0].clientY;
+        item.style.background="#f0faf9";
+      },{passive:true});
+      item.addEventListener("touchend",function(e){
+        item.style.background="";
+        if(_tsY!==null&&Math.abs(e.changedTouches[0].clientY-_tsY)>8){_tsY=null;return;}
+        _tsY=null;
+        pick(e);
+      });
+      item.addEventListener("touchmove",function(){item.style.background="";},{passive:true});
+      item.addEventListener("click",pick);
       lst.appendChild(item);
     });
     lst.scrollTop=0;
@@ -898,7 +910,13 @@ function attachDropdownPanel(inp, getOptionsFn, allowFreeText){
       item.style.cssText="padding:11px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:background .1s";
       function pick(e){e.preventDefault();e.stopPropagation();inp.value=opt;inp.style.borderColor="";inp.style.background="";close();inp.dispatchEvent(new Event("input"));updateProgress();}
       item.addEventListener("mousedown",pick);
-      item.addEventListener("touchend",pick);
+      var _dpTsY=null;
+      item.addEventListener("touchstart",function(e){_dpTsY=e.touches[0].clientY;},{passive:true});
+      item.addEventListener("touchmove",function(){_dpTsY=null;},{passive:true});
+      item.addEventListener("touchend",function(e){
+        if(_dpTsY===null||Math.abs(e.changedTouches[0].clientY-_dpTsY)>8){_dpTsY=null;return;}
+        _dpTsY=null; pick(e);
+      });
       item.addEventListener("mouseover",function(){item.style.background="#f0faf9";});
       item.addEventListener("mouseout",function(){item.style.background="";});
       panel.appendChild(item);
