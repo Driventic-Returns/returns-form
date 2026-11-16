@@ -720,12 +720,19 @@ function buildFormSections(){
       var diwaWarn=document.createElement("div");diwaWarn.id="diwa-oil-warning";
       diwaWarn.style.cssText="display:none;margin-top:14px;padding:14px 16px;background:#fff3cd;border:1.5px solid #f0ad4e;border-radius:8px";
       var diwaWarnInner=document.createElement("p");
-      diwaWarnInner.style.cssText="font-size:13px;font-weight:700;color:#7B5E00;margin-bottom:10px;line-height:1.5";
-      diwaWarnInner.textContent="ALL DIRTY GEARBOXES MUST BE DRAINED OF OIL AND RETURNED IN THE ORIGINAL PACKAGING INCLUDING THE BAG AND CRATE. FAILURE TO DO THIS WILL RESULT IN COLLECTION BEING REJECTED AND CHARGES WILL APPLY. PLEASE PROVIDE IMAGES OF INSERTED BUNGS.";
-      var diwaCheckRow=document.createElement("label");diwaCheckRow.style.cssText="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#7B5E00";
-      var diwaCb=document.createElement("input");diwaCb.type="checkbox";diwaCb.id="diwa-oil-checkbox";diwaCb.style.cssText="width:16px;height:16px;accent-color:#f0ad4e;cursor:pointer";
-      diwaCheckRow.appendChild(diwaCb);diwaCheckRow.appendChild(document.createTextNode("I confirm the gearbox is fully assembled and I have read and understood the above requirements."));
-      diwaWarn.appendChild(diwaWarnInner);diwaWarn.appendChild(diwaCheckRow);
+      diwaWarnInner.style.cssText="font-size:12px;font-weight:700;color:#7B5E00;margin-bottom:12px;line-height:1.5;text-transform:uppercase;letter-spacing:.03em";
+      diwaWarnInner.textContent="Dirty Gearbox Returns Checklist — please confirm all items before submitting:";
+      var diwaChecks=[
+        {id:"diwa-oil-checkbox",  text:"Gearbox is correctly prepared in accordance with the dirty gearbox returns checklist"},
+        {id:"diwa-oil-checkbox-2",text:"Photos of the prepared gearbox showing fully drained and bungs have been inserted, gearbox is securely fastened to pallet/crate, package is suitable for transportation"}
+      ];
+      diwaWarn.appendChild(diwaWarnInner);
+      diwaChecks.forEach(function(item){
+        var row=document.createElement("label");row.style.cssText="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:13px;font-weight:600;color:#7B5E00;margin-bottom:9px;line-height:1.45";
+        var cb=document.createElement("input");cb.type="checkbox";cb.id=item.id;cb.style.cssText="width:16px;height:16px;accent-color:#f0ad4e;cursor:pointer;flex-shrink:0;margin-top:1px";
+        row.appendChild(cb);row.appendChild(document.createTextNode(item.text));
+        diwaWarn.appendChild(row);
+      });
       body.appendChild(diwaWarn);
       card.appendChild(body);c.appendChild(card);
       itemCount=0;addItem();return;
@@ -1279,12 +1286,15 @@ g("btn-submit").addEventListener("click",function(){
     return;
   }
   // Check DIWA oil warning checkbox
-  var diwaCb=g("diwa-oil-checkbox");
-  if(diwaCb&&g("diwa-oil-warning")&&g("diwa-oil-warning").style.display!=="none"&&!diwaCb.checked){
-    toast("Please Confirm The Oil Drainage Requirements Before Submitting",false);
-    g("diwa-oil-warning").style.boxShadow="0 0 0 3px rgba(240,173,78,.5)";
-    setTimeout(function(){if(g("diwa-oil-warning"))g("diwa-oil-warning").style.boxShadow="";},2000);
-    return;
+  var _diwaWarnEl=g("diwa-oil-warning");
+  if(_diwaWarnEl&&_diwaWarnEl.style.display!=="none"){
+    var _cb1=g("diwa-oil-checkbox"),_cb2=g("diwa-oil-checkbox-2");
+    if(!(_cb1&&_cb1.checked&&_cb2&&_cb2.checked)){
+      toast("Please Tick All Items On The Dirty Gearbox Checklist Before Submitting",false);
+      _diwaWarnEl.style.boxShadow="0 0 0 3px rgba(240,173,78,.5)";
+      setTimeout(function(){if(_diwaWarnEl)_diwaWarnEl.style.boxShadow="";},2000);
+      return;
+    }
   }
   // Check required fields (all except Additional Notes / notes fields)
   var missingField=null;
