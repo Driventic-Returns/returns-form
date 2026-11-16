@@ -601,36 +601,40 @@ var _scriptsLoaded=false;
 function loadScripts(cb){
   if(_scriptsLoaded){cb();return;}
   _scriptsLoaded=true;
-  function one(src,next){
-    var s=document.createElement("script"); s.src=src;
-    s.onload=next;
-    s.onerror=function(){
-      g("nav-form").textContent="New Return";
-      // Show error on screen so user can see it
-      var err=document.createElement("div");
-      err.style.cssText="position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:14px 24px;border-radius:8px;font-size:14px;z-index:9999;max-width:90vw;text-align:center";
-      err.textContent="Failed to load required scripts. Check your internet connection and refresh the page.";
-      document.body.appendChild(err);
-    };
+  function showNetErr(){
+    var err=document.createElement("div");
+    err.style.cssText="position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:14px 24px;border-radius:8px;font-size:14px;z-index:9999;max-width:90vw;text-align:center";
+    err.textContent="Failed to load required scripts. Check your internet connection and refresh the page.";
+    document.body.appendChild(err);
+  }
+  function loadScript(src,onload,onerror){
+    var s=document.createElement("script");s.src=src;
+    s.onload=onload;s.onerror=onerror||showNetErr;
     document.head.appendChild(s);
   }
-  one("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js",function(){
-    one("https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js",function(){
-      one("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js",function(){
-        one("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",function(){
-          try{firebase.initializeApp({
-            apiKey:"AIzaSyCu0Smf-tYQoVF-UNZW325w5wBODqjR6us",
-            authDomain:"driventic-returns.firebaseapp.com",
-            projectId:"driventic-returns",
-            storageBucket:"driventic-returns.firebasestorage.app",
-            messagingSenderId:"777449072637",
-            appId:"1:777449072637:web:d3393e7eb671e2cd715b94"
-          });}catch(e){}
-          db=firebase.firestore(); cb();
-        });
-      });
-    });
-  });
+  // Load the three Firebase scripts in parallel, then init once all three are ready
+  var _fbDone=0;
+  function onFbScript(){
+    if(++_fbDone<3)return;
+    // All Firebase scripts loaded — init app
+    try{firebase.initializeApp({
+      apiKey:"AIzaSyCu0Smf-tYQoVF-UNZW325w5wBODqjR6us",
+      authDomain:"driventic-returns.firebaseapp.com",
+      projectId:"driventic-returns",
+      storageBucket:"driventic-returns.firebasestorage.app",
+      messagingSenderId:"777449072637",
+      appId:"1:777449072637:web:d3393e7eb671e2cd715b94"
+    });}catch(e){}
+    db=firebase.firestore();
+    // Enable Firestore offline persistence for faster repeat loads
+    db.enablePersistence({synchronizeTabs:true}).catch(function(){});
+    cb();
+    // Load jsPDF in the background after Firebase is ready — it's only needed on export
+    loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",null,null);
+  }
+  loadScript("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js",onFbScript);
+  loadScript("https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js",onFbScript);
+  loadScript("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js",onFbScript);
 }
 
 // ═══════════════════════════════════════════
@@ -1747,11 +1751,13 @@ function getLocation(rec){
   return findFieldValue(rec,["location"]);
 }
 
-function initRecords(){
+function initRecords(forceRefresh){
   if(!db){toast("Connecting...",false);return;}
   // Update thead columns based on admin status
   var thead=document.getElementById("records-thead");
   if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Destination</th><th>Status</th>'+(isAdmin?'<th>Update Status</th><th title="Parts received in good condition — no significant leaks or damage" style="white-space:nowrap">Received OK ✓</th><th></th>':'')+'</tr>';
+  // Use cached rows if already loaded (avoids re-fetch on tab switch)
+  if(!forceRefresh&&allRecordRows.length){renderRecordsTable(allRecordRows);return;}
   g("records-body").innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#888">Loading...</td></tr>';
   db.collection("returns").orderBy("date","desc").get().then(function(snap){
     var rows=[];snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
@@ -1833,19 +1839,25 @@ function renderTrackingVisual(rows){
   el.innerHTML=svg;
 }
 
-function initTracking(){
+function initTracking(forceRefresh){
   if(!db){toast("Connecting...",false);return;}
-  var el=g("tracking-visual"); if(el) el.innerHTML='<p style="font-size:13px;color:#888;padding:20px 0">Loading...</p>';
-  db.collection("returns").get().then(function(snap){
-    var rows=[]; snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
+  function render(rows){
     renderTrackingVisual(rows);
     renderTrackingMap(rows);
     var empty=g("tracking-empty"); if(empty) empty.style.display=rows.length?"none":"";
+  }
+  // Reuse cached records unless a manual refresh was requested
+  if(!forceRefresh&&allRecordRows.length){render(allRecordRows);return;}
+  var el=g("tracking-visual"); if(el) el.innerHTML='<p style="font-size:13px;color:#888;padding:20px 0">Loading...</p>';
+  db.collection("returns").orderBy("date","desc").get().then(function(snap){
+    var rows=[]; snap.forEach(function(d){rows.push(Object.assign({id:d.id},d.data()));});
+    allRecordRows=rows; // update shared cache
+    render(rows);
   }).catch(function(e){
     var el=g("tracking-visual"); if(el) el.innerHTML='<p style="color:#c0392b;font-size:13px">Error: '+e.message+'</p>';
   });
 }
-g("btn-refresh-tracking").addEventListener("click",initTracking);
+g("btn-refresh-tracking").addEventListener("click",function(){initTracking(true);});
 
 // ── Nominatim geocoder with localStorage cache ────────────────────────────
 var _geoCache=(function(){try{return JSON.parse(localStorage.getItem("_driventic_geocache")||"{}");}catch(e){return{};}})();
@@ -2267,6 +2279,9 @@ function renderRecordsTable(rows){
       // ignore clicks on interactive elements
       if(e.target.closest("input,select,button")) return;
       var id=row.dataset.id;
+      var cached=allRecordRows.find(function(r){return r.id===id;});
+      if(cached){openDetail(cached);return;}
+      // Fallback to Firestore if not in cache
       db.collection("returns").doc(id).get().then(function(snap){
         if(snap.exists) openDetail(Object.assign({id:snap.id},snap.data()));
         else toast("Record Not Found",false);
@@ -2337,7 +2352,7 @@ function runRecordsSearch(){
 }
 g("records-search").addEventListener("input",runRecordsSearch);
 g("records-search-field").addEventListener("change",runRecordsSearch);
-g("btn-refresh").addEventListener("click",initRecords);
+g("btn-refresh").addEventListener("click",function(){allRecordRows=[];initRecords(true);});
 
 // ═══════════════════════════════════════════
 // RECORD DETAIL MODAL
