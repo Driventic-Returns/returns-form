@@ -701,6 +701,100 @@ function initForm(){
   buildFormSections();
   var rdEl=g("return-date"); if(rdEl) rdEl.value=selectedDateRaw;
   updateProgress();
+  _attachAddressMemory();
+}
+
+// ── Address memory: auto-fill address from operator+location combo ────────────
+// Stored in Firestore (shared across all devices) with localStorage as a fast offline cache
+var _addrMemory=(function(){try{return JSON.parse(localStorage.getItem("_driventic_addrmap")||"{}");}catch(e){return{};}})();
+var _addrMemoryLoaded=false;
+function _addrKey(op,loc){return(op||"").trim().toLowerCase()+"||"+(loc||"").trim().toLowerCase();}
+function _saveAddrMemory(){
+  try{localStorage.setItem("_driventic_addrmap",JSON.stringify(_addrMemory));}catch(e){}
+  db.collection("config").doc("addressMemory").set(_addrMemory).catch(function(){});
+}
+function _loadAddrMemory(cb){
+  if(_addrMemoryLoaded){if(cb)cb();return;}
+  db.collection("config").doc("addressMemory").get().then(function(snap){
+    if(snap.exists){
+      var remote=snap.data()||{};
+      // Remote wins — merge into local cache
+      Object.assign(_addrMemory,remote);
+      try{localStorage.setItem("_driventic_addrmap",JSON.stringify(_addrMemory));}catch(e){}
+    }
+    _addrMemoryLoaded=true;
+    if(cb)cb();
+  }).catch(function(){_addrMemoryLoaded=true;if(cb)cb();});
+}
+
+function _attachAddressMemory(){
+  // Find the field elements by label keywords
+  function findFieldEl(keywords){
+    var el=null;
+    cfg.sections.forEach(function(sec){
+      if(el||sec.isItemsSection||!sec.visible)return;
+      sec.fields.forEach(function(f){
+        if(el)return;
+        var lbl=f.label.toLowerCase();
+        if(keywords.some(function(k){return lbl.indexOf(k)!==-1;})){
+          var candidate=g(f.id);
+          if(candidate)el={el:candidate,fid:f.id};
+        }
+      });
+    });
+    return el;
+  }
+
+  var nameField=findFieldEl(["operator","engineer","full name","name"]);
+  var locField =findFieldEl(["location","depot","site"]);
+  var addrField=findFieldEl(["address","shipping"]);
+
+  if(!nameField||!locField||!addrField)return; // fields not present in this config
+
+  var addrEl=addrField.el;
+  var _addrUserEdited=false; // flag: user manually changed address this session
+
+  // Pre-load from Firestore as soon as the form is ready
+  _loadAddrMemory(function(){tryAutoFill();});
+
+  function tryAutoFill(){
+    var op=(nameField.el.value||"").trim();
+    var loc=(locField.el.value||"").trim();
+    if(!op||!loc)return;
+    // If Firestore hasn't loaded yet, fetch first then retry
+    if(!_addrMemoryLoaded){_loadAddrMemory(function(){tryAutoFill();});return;}
+    var key=_addrKey(op,loc);
+    var saved=_addrMemory[key];
+    if(saved&&!_addrUserEdited){
+      addrEl.value=saved;
+      addrEl.style.background="#f0fdf4";
+      addrEl.title="Auto-filled from shared address book — edit to update";
+      setTimeout(function(){addrEl.style.background="";},1200);
+    }
+  }
+
+  function saveCurrentAddr(){
+    var op=(nameField.el.value||"").trim();
+    var loc=(locField.el.value||"").trim();
+    var addr=(addrEl.value||"").trim();
+    if(op&&loc&&addr){
+      _addrMemory[_addrKey(op,loc)]=addr;
+      _saveAddrMemory();
+    }
+  }
+
+  nameField.el.addEventListener("input",function(){_addrUserEdited=false;tryAutoFill();});
+  nameField.el.addEventListener("change",function(){_addrUserEdited=false;tryAutoFill();});
+  locField.el.addEventListener("input",function(){_addrUserEdited=false;tryAutoFill();});
+  locField.el.addEventListener("change",function(){_addrUserEdited=false;tryAutoFill();});
+
+  addrEl.addEventListener("input",function(){
+    _addrUserEdited=true;
+    addrEl.style.background="";
+    addrEl.title="";
+    saveCurrentAddr();
+  });
+  addrEl.addEventListener("change",saveCurrentAddr);
 }
 function buildFormSections(){
   var c=g("form-sections-container");c.innerHTML="";
