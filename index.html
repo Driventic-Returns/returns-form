@@ -139,7 +139,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .an-toggle button.active{background:#0a1929;color:#fff}
 .an-canvas-wrap{position:relative;width:100%;overflow:hidden}
 .an-canvas-wrap canvas{display:block;width:100%!important}
-@media(max-width:700px){#an-charts{grid-template-columns:1fr!important}}
+/* analytics always single column */
 .rec-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
 .rec-toolbar h2{font-size:15px;font-weight:600}
 .tbl-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;overflow-x:auto}
@@ -311,7 +311,7 @@ tr:hover td{background:#fafafa}
         <button class="btn btn-ghost" id="btn-refresh-analytics">&#8635; Refresh</button>
       </div>
     </div>
-    <div id="an-charts" style="display:grid;grid-template-columns:1fr 1fr;gap:16px"></div>
+    <div id="an-charts" style="display:grid;grid-template-columns:1fr;gap:20px"></div>
   </div>
 
   <!-- RECORDS PAGE -->
@@ -1957,7 +1957,7 @@ function _makeChartCard(title,controls,canvasId){
   if(controls){var ctrl=document.createElement("div");ctrl.className="an-controls";ctrl.appendChild(controls);head.appendChild(ctrl);}
   card.appendChild(head);
   var wrap=document.createElement("div");wrap.className="an-canvas-wrap";
-  var cv=document.createElement("canvas");cv.id=canvasId;cv.height=260;wrap.appendChild(cv);
+  var cv=document.createElement("canvas");cv.id=canvasId;cv.height=380;wrap.appendChild(cv);
   card.appendChild(wrap);
   return{card:card,canvas:cv};
 }
@@ -1983,7 +1983,7 @@ function _drawChart(canvas,labels,datasets,type,opts){
   var ctx=canvas.getContext("2d");
   ctx.clearRect(0,0,W,H);
 
-  var padL=opts.padL||46,padR=opts.padR||16,padT=opts.padT||16,padB=opts.padB||72;
+  var padL=opts.padL||52,padR=opts.padR||20,padT=opts.padT||24,padB=opts.padB||120;
   var cw=W-padL-padR, ch=H-padT-padB;
   if(cw<=0||ch<=0)return;
 
@@ -2001,7 +2001,7 @@ function _drawChart(canvas,labels,datasets,type,opts){
   }
 
   var n=labels.length;
-  var barW=Math.min(32,Math.floor(cw/Math.max(n,1)*0.6));
+  var barW=Math.min(48,Math.max(8,Math.floor(cw/Math.max(n,1)*0.55)));
   var groupW=cw/Math.max(n,1);
 
   datasets.forEach(function(ds,di){
@@ -2048,16 +2048,16 @@ function _drawChart(canvas,labels,datasets,type,opts){
     }
   });
 
-  // X labels
-  ctx.fillStyle="#555"; ctx.font="11px -apple-system,sans-serif"; ctx.textAlign="center";
+  // X labels — rotated 40° to avoid overlap
+  ctx.fillStyle="#555"; ctx.font="12px -apple-system,sans-serif"; ctx.textAlign="right";
   labels.forEach(function(lbl,xi){
     var x=padL+xi*groupW+groupW/2;
-    var maxLblW=groupW-4;
-    // Wrap long labels
-    var words=String(lbl).split(" ");var lines=[],cur="";
-    words.forEach(function(w){var t=cur?cur+" "+w:w;if(ctx.measureText(t).width>maxLblW&&cur){lines.push(cur);cur=w;}else cur=t;});
-    if(cur)lines.push(cur);
-    lines.slice(0,3).forEach(function(l,li){ctx.fillText(l,x,padT+ch+16+li*13);});
+    var y=padT+ch+10;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(-0.65); // ~37 degrees
+    ctx.fillText(String(lbl),0,0);
+    ctx.restore();
   });
 
   // Legend (if multiple datasets)
@@ -2162,7 +2162,7 @@ function _buildAnalytics(rows){
       } else {
         datasets=[{label:sel,data:monthKeys.map(function(k){return(monthMap[k]&&monthMap[k][sel])||0;}),color:CHART_PALETTE[0]}];
       }
-      _drawChart(g("an-c4"),monthLabels,datasets,type[0],{padB:50,padL:40});
+      _drawChart(g("an-c4"),monthLabels,datasets,type[0]);
     }
     prodSel.addEventListener("change",redraw);
     redraw();
