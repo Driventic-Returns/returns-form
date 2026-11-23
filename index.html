@@ -2167,6 +2167,55 @@ function _buildAnalytics(rows){
     prodSel.addEventListener("change",redraw);
     redraw();
   })();
+
+  // ── 5. Monthly chart — by operator ───────────────────────────────────────
+  (function(){
+    var opMonthMap={};
+    var allOps=[];
+    filtered.forEach(function(r){
+      var d=r.selectedDate||fmtDateFromTs(r.date)||"";
+      if(!d)return;
+      var dt=new Date(d);if(isNaN(dt))return;
+      var key=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
+      var op=findFieldValue(r,["operator","company","customer","name"])||"Unknown";
+      if(allOps.indexOf(op)===-1)allOps.push(op);
+      if(!opMonthMap[key])opMonthMap[key]={};
+      opMonthMap[key][op]=(opMonthMap[key][op]||0)+(r.items||[]).length;
+    });
+    allOps.sort();
+    var monthKeys=Object.keys(opMonthMap).sort();
+    var monthLabels=monthKeys.map(function(k){var d=new Date(k+"-01");return d.toLocaleDateString("en-GB",{month:"short",year:"2-digit"});});
+
+    var ctrlWrap=document.createElement("div");ctrlWrap.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
+    var opSel=document.createElement("select");opSel.style.cssText="padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;font-family:inherit;background:#fff;outline:none;color:#111;max-width:200px";
+    var allOpt2=document.createElement("option");allOpt2.value="__all__";allOpt2.textContent="All Operators";opSel.appendChild(allOpt2);
+    allOps.forEach(function(op){var o=document.createElement("option");o.value=op;o.textContent=op;opSel.appendChild(o);});
+    ctrlWrap.appendChild(opSel);
+    var type5=["bar"];
+    var toggle5=_typeToggle("an-c5",function(t){type5[0]=t;redrawOp();});
+    ctrlWrap.appendChild(toggle5);
+
+    var cc5=_makeChartCard("Returns by Month per Operator",ctrlWrap,"an-c5");
+    container.appendChild(cc5.card);
+
+    function redrawOp(){
+      var sel=opSel.value;
+      var datasets=[];
+      if(sel==="__all__"){
+        var totals={};
+        allOps.forEach(function(op){totals[op]=monthKeys.reduce(function(s,k){return s+((opMonthMap[k]&&opMonthMap[k][op])||0);},0);});
+        var top=allOps.slice().sort(function(a,b){return totals[b]-totals[a];}).slice(0,6);
+        top.forEach(function(op,di){
+          datasets.push({label:op,data:monthKeys.map(function(k){return(opMonthMap[k]&&opMonthMap[k][op])||0;}),color:CHART_PALETTE[di%CHART_PALETTE.length]});
+        });
+      } else {
+        datasets=[{label:sel,data:monthKeys.map(function(k){return(opMonthMap[k]&&opMonthMap[k][sel])||0;}),color:CHART_PALETTE[1]}];
+      }
+      _drawChart(g("an-c5"),monthLabels,datasets,type5[0]);
+    }
+    opSel.addEventListener("change",redrawOp);
+    redrawOp();
+  })();
 }
 
 // ── Nominatim geocoder with localStorage cache ────────────────────────────
