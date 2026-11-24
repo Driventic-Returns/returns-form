@@ -707,6 +707,7 @@ function showPage(page){
     g("nav-"+p).classList.toggle("active",p===page);
   });
   g("nav-admin").style.display=isAdmin?"":"none";
+  g("nav-analytics").style.display=isAdmin?"":"none";
   if(page==="form")      initForm();
   if(page==="records")   initRecords();
   if(page==="tracking")  initTracking();
@@ -1795,7 +1796,7 @@ function initRecords(forceRefresh){
   if(!db){toast("Connecting...",false);return;}
   // Update thead columns based on admin status
   var thead=document.getElementById("records-thead");
-  if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Destination</th><th>Status</th>'+(isAdmin?'<th>Update Status</th><th title="Parts received in good condition — no significant leaks or damage" style="white-space:nowrap">Received OK ✓</th><th></th>':'')+'</tr>';
+  if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th style="white-space:nowrap">8D Required</th><th>Destination</th><th>Status</th>'+(isAdmin?'<th>Update Status</th><th title="Parts received in good condition — no significant leaks or damage" style="white-space:nowrap">Received OK ✓</th><th></th>':'')+'</tr>';
   // Use cached rows if already loaded (avoids re-fetch on tab switch)
   if(!forceRefresh&&allRecordRows.length){renderRecordsTable(allRecordRows);return;}
   g("records-body").innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#888">Loading...</td></tr>';
@@ -2692,6 +2693,15 @@ function renderRecordsTable(rows){
     var frtCell=isAdmin
           ?'<td><div class="frt-cell-wrap"><input class="frt-input'+cls+'" data-id="'+r.id+'" value="'+display+'" maxlength="10" placeholder="FRT-"><button class="btn btn-black btn-sm frt-save-btn" data-id="'+r.id+'" style="padding:3px 7px;font-size:11px;flex-shrink:0">Save</button><button class="btn btn-danger btn-sm frt-clear-btn" data-id="'+r.id+'" style="padding:3px 6px;font-size:11px;flex-shrink:0;'+(hasNum?'':'display:none')+'">&#10005;</button></div></td>'
           :'<td><span class="ref-tag" style="'+(hasNum?'background:#e8f5e9;color:#1b5e20':'')+'">'+(frtVal||'—')+'</span></td>';
+    // 8D Required cell
+    var eightD=r.eightD||"";
+    var eightDCell=isAdmin
+      ?'<td onclick="event.stopPropagation()"><select class="eightd-sel" data-id="'+r.id+'" style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid #ccc;font-family:inherit;cursor:pointer;background:'+(eightD==="YES"?"#d4edda":eightD==="NO"?"#fff3cd":"#f9f9f9")+';color:'+(eightD==="YES"?"#155724":eightD==="NO"?"#856404":"#888")+';font-weight:600">'
+        +'<option value="">—</option>'
+        +'<option value="YES"'+(eightD==="YES"?" selected":"")+'>YES</option>'
+        +'<option value="NO"'+(eightD==="NO"?" selected":"")+'>NO</option>'
+        +'</select></td>'
+      :'<td>'+(eightD==="YES"?'<span style="background:#d4edda;color:#155724;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700">YES</span>':eightD==="NO"?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700">NO</span>':'<span style="color:#bbb">—</span>')+'</td>';
     var condVal=r.conditionOk===true?"yes":r.conditionOk===false?"no":"";
     var condBg=condVal==="yes"?"#e8f5e9":condVal==="no"?"#fff0f0":"#f9f9f9";
     var condColor=condVal==="yes"?"#1b5e20":condVal==="no"?"#b71c1c":"#888";
@@ -2701,6 +2711,7 @@ function renderRecordsTable(rows){
       '<td>'+esc(operator)+'</td>'+
       '<td>'+esc(location)+'</td>'+
       '<td style="color:#666;font-size:12px">'+itemSummary+'</td>'+
+      eightDCell+
       '<td>'+destSelHtml+'</td>'+
       '<td><span class="badge s-'+sc+'">'+(r.status||STATUS_OPTIONS[0])+'</span></td>'+
       (isAdmin?'<td onclick="event.stopPropagation()"><select class="stat-sel" data-id="'+r.id+'" data-dest="'+esc(dest)+'">'+opts+'</select></td>':'')+
@@ -2767,6 +2778,24 @@ function renderRecordsTable(rows){
     });
   });
   } // end isAdmin destination block
+
+  // 8D Required change — admin only
+  if(isAdmin){
+  document.querySelectorAll(".eightd-sel").forEach(function(sel){
+    sel.addEventListener("change",function(){
+      var val=sel.value;
+      var id=sel.dataset.id;
+      var rec=allRecordRows.find(function(x){return x.id===id;});
+      db.collection("returns").doc(id).update({eightD:val})
+        .then(function(){
+          if(rec) rec.eightD=val;
+          sel.style.background=val==="YES"?"#d4edda":val==="NO"?"#fff3cd":"#f9f9f9";
+          sel.style.color=val==="YES"?"#155724":val==="NO"?"#856404":"#888";
+          toast("8D Updated");
+        }).catch(function(e){toast(e.message,false);});
+    });
+  });
+  } // end isAdmin 8D block
 
   // FRT input — admin only
   if(isAdmin){
