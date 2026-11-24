@@ -2299,6 +2299,11 @@ function _buildAnalytics(rows){
       var opt=document.createElement("option");opt.value=o[0];opt.textContent=o[1];ySel.appendChild(opt);
     });
 
+    // Part filter — populated after data loads
+    var partFilterSel=document.createElement("select");partFilterSel.style.cssText=selStyle+"max-width:200px";
+    var partFilterWrap=document.createElement("span");partFilterWrap.style.cssText="display:flex;align-items:center;gap:6px";
+    partFilterWrap.appendChild(mkLabel("Part:"));partFilterWrap.appendChild(partFilterSel);
+
     // Top-N limit
     var topSel=document.createElement("select");topSel.style.cssText=selStyle+"max-width:100px";
     [["10","Top 10"],["20","Top 20"],["50","Top 50"],["0","All"]].forEach(function(o){
@@ -2310,11 +2315,30 @@ function _buildAnalytics(rows){
 
     ctrlWrap.appendChild(mkLabel("X:"));ctrlWrap.appendChild(xSel);
     ctrlWrap.appendChild(mkLabel("Y:"));ctrlWrap.appendChild(ySel);
+    ctrlWrap.appendChild(partFilterWrap);
     ctrlWrap.appendChild(mkLabel("Show:"));ctrlWrap.appendChild(topSel);
     ctrlWrap.appendChild(toggle6);
 
     var cc6=_makeChartCard("Custom Chart",ctrlWrap,"an-c6");
     container.appendChild(cc6.card);
+
+    // Populate part filter from filtered dataset
+    var allPartNames=[];
+    filtered.forEach(function(r){(r.items||[]).forEach(function(it){if(it.name&&allPartNames.indexOf(it.name)===-1)allPartNames.push(it.name);});});
+    allPartNames.sort();
+    var allPartsOpt=document.createElement("option");allPartsOpt.value="__all__";allPartsOpt.textContent="All Parts";partFilterSel.appendChild(allPartsOpt);
+    allPartNames.forEach(function(p){var o=document.createElement("option");o.value=p;o.textContent=p;partFilterSel.appendChild(o);});
+
+    // Show/hide Top-N when X=part (not needed — already shows all parts)
+    function syncControls(){
+      var xv=xSel.value;
+      topSel.parentElement&&(topSel.previousSibling.style.display=xv==="part"?"none":"");
+      topSel.style.display=xv==="part"?"none":"";
+      // Hide part filter when X axis IS part name (filtering by part makes no sense then)
+      partFilterWrap.style.display=xv==="part"?"none":"";
+    }
+    xSel.addEventListener("change",function(){syncControls();redrawCustom();});
+    syncControls();
 
     function getXKey(r){
       var xv=xSel.value;
@@ -2328,64 +2352,70 @@ function _buildAnalytics(rows){
       if(xv==="operator"){var v=getOperator(r)||"Unknown";return{sort:v,label:v};}
       if(xv==="depot"){var v=getLocation(r)||"Unknown";return{sort:v,label:v};}
       if(xv==="region"){var v=r.destination||"Germany / Austria";return{sort:v,label:v};}
-      return null; // part handled separately (one row per item)
+      return null;
     }
 
     function redrawCustom(){
       var xv=xSel.value, yv=ySel.value;
+      var partFilter=partFilterSel.value; // "__all__" or a specific part name
       var counts={}, sortKeys={};
 
+      // Apply part filter to records (only relevant when X != part)
+      var src=filtered;
+      if(xv!=="part"&&partFilter!=="__all__"){
+        src=filtered.filter(function(r){return(r.items||[]).some(function(it){return it.name===partFilter;});});
+      }
+
       if(xv==="part"){
-        filtered.forEach(function(r){
-          (r.items||[]).forEach(function(it){
-            if(!it.name)return;
-            var k=it.name;
-            if(!counts[k])counts[k]=0;
-            counts[k]+=(yv==="parts"?1:(counts[k]===0?1:0));
-          });
-          // for records mode, count record once per unique part name
-          if(yv==="records"){
+        src.forEach(function(r){
+          if(yv==="parts"){
+            (r.items||[]).forEach(function(it){if(it.name)counts[it.name]=(counts[it.name]||0)+1;});
+          } else {
             var seen={};
             (r.items||[]).forEach(function(it){if(it.name&&!seen[it.name]){seen[it.name]=true;counts[it.name]=(counts[it.name]||0)+1;}});
           }
         });
-        if(yv==="parts"){
-          counts={};
-          filtered.forEach(function(r){(r.items||[]).forEach(function(it){if(it.name)counts[it.name]=(counts[it.name]||0)+1;});});
-        }
         Object.keys(counts).forEach(function(k){sortKeys[k]=k;});
       } else {
-        filtered.forEach(function(r){
+        src.forEach(function(r){
           var kObj=getXKey(r); if(!kObj)return;
           var k=kObj.sort;
           sortKeys[k]=kObj.label;
           if(!counts[k])counts[k]=0;
-          counts[k]+=(yv==="parts"?(r.items||[]).length:1);
+          if(yv==="parts"){
+            // Count only matching items if part filter active
+            if(partFilter!=="__all__"){
+              counts[k]+=(r.items||[]).filter(function(it){return it.name===partFilter;}).length;
+            } else {
+              counts[k]+=(r.items||[]).length;
+            }
+          } else {
+            counts[k]+=1;
+          }
         });
       }
 
       var entries=Object.keys(counts).map(function(k){return{sort:k,label:sortKeys[k]||k,val:counts[k]};});
-      // Sort: months chronologically, everything else by value desc
       if(xv==="month") entries.sort(function(a,b){return a.sort<b.sort?-1:1;});
       else entries.sort(function(a,b){return b.val-a.val;});
 
       var limit=parseInt(topSel.value)||0;
-      if(limit>0)entries=entries.slice(0,limit);
+      if(limit>0&&xv!=="part")entries=entries.slice(0,limit);
 
       var labels=entries.map(function(e){return e.label;});
       var data=entries.map(function(e){return e.val;});
       var yLabel=ySel.options[ySel.selectedIndex].textContent;
+      var partLabel=partFilter!=="__all__"?" — "+partFilter:"";
 
-      // Update card title dynamically
       cc6.card.querySelector(".an-card-title").textContent=
-        "Custom: "+xSel.options[xSel.selectedIndex].textContent+" vs "+yLabel;
+        "Custom: "+xSel.options[xSel.selectedIndex].textContent+" vs "+yLabel+partLabel;
 
       _drawChart(g("an-c6"),labels,[{data:data,color:CHART_PALETTE[0]}],type6[0]);
     }
 
-    xSel.addEventListener("change",redrawCustom);
     ySel.addEventListener("change",redrawCustom);
     topSel.addEventListener("change",redrawCustom);
+    partFilterSel.addEventListener("change",redrawCustom);
     redrawCustom();
   })();
 }
