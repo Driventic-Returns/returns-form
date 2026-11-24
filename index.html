@@ -1174,6 +1174,21 @@ function makeFieldEl(f){
         srWrap.appendChild(srCb);srWrap.appendChild(srLbl);div.appendChild(srWrap);
       })();
     }
+    // ARS / Claim Number field — add "No ARS number applicable" checkbox
+    var isARSField=(/\bars\b/i.test(f.label))||(/claim[\s\-]*(number|num|no\.?)/i.test(f.label));
+    if(isARSField){
+      (function(){
+        var arsWrap=document.createElement("div");arsWrap.style.cssText="display:flex;align-items:center;gap:7px;margin-top:6px;";
+        var arsCb=document.createElement("input");arsCb.type="checkbox";arsCb.id=f.id+"-ars-na-cb";arsCb.style.cssText="width:16px;height:16px;cursor:pointer;accent-color:#888;flex-shrink:0;";
+        var arsLbl=document.createElement("label");arsLbl.htmlFor=f.id+"-ars-na-cb";arsLbl.textContent="No ARS number applicable";arsLbl.style.cssText="font-size:12px;color:#666;cursor:pointer;user-select:none;";
+        arsCb.addEventListener("change",function(){
+          if(arsCb.checked){inp.value="N/A";inp.setAttribute("readonly","readonly");inp.style.color="#aaa";inp.style.background="#f5f5f5";}
+          else{inp.value="";inp.removeAttribute("readonly");inp.style.color="";inp.style.background="";}
+          updateProgress();
+        });
+        arsWrap.appendChild(arsCb);arsWrap.appendChild(arsLbl);div.appendChild(arsWrap);
+      })();
+    }
   }
   return div;
 }
@@ -3071,19 +3086,61 @@ function openDetail(rec){
     if(secDiv.children.length>1) body.appendChild(secDiv);
   });
 
-  // If fields don't match current cfg (old record), show raw fields
-  if(!body.children.length&&rec.fields){
-    var secDiv=document.createElement("div");secDiv.className="detail-sec";
-    var title=document.createElement("div");title.className="detail-sec-title";title.textContent="Return details";
-    secDiv.appendChild(title);
+  // ── Catch-all: any rec.fields entries not covered by cfg sections ─────────
+  // Track which field IDs were already rendered
+  var _shownIds={};
+  cfg.sections.forEach(function(sec){sec.fields&&sec.fields.forEach(function(f){_shownIds[f.id]=true;});});
+  if(rec.fields){
+    var extraFields=Object.keys(rec.fields).filter(function(k){return!_shownIds[k]&&rec.fields[k].value;});
+    if(extraFields.length){
+      var extraSec=document.createElement("div");extraSec.className="detail-sec";
+      var extraTitle=document.createElement("div");extraTitle.className="detail-sec-title";extraTitle.textContent="Additional Details";
+      extraSec.appendChild(extraTitle);
+      extraFields.forEach(function(k){
+        var fd=rec.fields[k];
+        var row=document.createElement("div");row.className="detail-row";
+        var l=document.createElement("span");l.className="detail-lbl";l.textContent=(fd.label||k)+":";
+        var v=document.createElement("span");v.className="detail-val";v.textContent=fd.value;
+        row.appendChild(l);row.appendChild(v);extraSec.appendChild(row);
+      });
+      body.appendChild(extraSec);
+    }
+  }
+
+  // ── If nothing rendered at all (very old record) show raw dump ────────────
+  if(body.children.length<=1&&rec.fields){
+    var rawSec=document.createElement("div");rawSec.className="detail-sec";
+    var rawTitle=document.createElement("div");rawTitle.className="detail-sec-title";rawTitle.textContent="Return Details";
+    rawSec.appendChild(rawTitle);
     Object.keys(rec.fields).forEach(function(k){
       var fd=rec.fields[k];if(!fd.value)return;
       var row=document.createElement("div");row.className="detail-row";
       var l=document.createElement("span");l.className="detail-lbl";l.textContent=(fd.label||k)+":";
       var v=document.createElement("span");v.className="detail-val";v.textContent=fd.value;
-      row.appendChild(l);row.appendChild(v);secDiv.appendChild(row);
+      row.appendChild(l);row.appendChild(v);rawSec.appendChild(row);
     });
-    body.appendChild(secDiv);
+    if(rawSec.children.length>1)body.appendChild(rawSec);
+  }
+
+  // ── Portal-managed fields (stored top-level, not in rec.fields) ───────────
+  var portalFields=[];
+  if(rec.destination)portalFields.push({label:"Destination",value:rec.destination});
+  if(rec.eightD)portalFields.push({label:"8D Required",value:rec.eightD,
+    style:rec.eightD==="YES"?"background:#d4edda;color:#155724;padding:2px 8px;border-radius:5px;font-weight:700;font-size:12px"
+         :rec.eightD==="NO"?"background:#fff3cd;color:#856404;padding:2px 8px;border-radius:5px;font-weight:700;font-size:12px":""});
+  if(portalFields.length){
+    var pSec=document.createElement("div");pSec.className="detail-sec";
+    var pTitle=document.createElement("div");pTitle.className="detail-sec-title";pTitle.textContent="Return Details";
+    pSec.appendChild(pTitle);
+    portalFields.forEach(function(pf){
+      var row=document.createElement("div");row.className="detail-row";
+      var l=document.createElement("span");l.className="detail-lbl";l.textContent=pf.label+":";
+      var v=document.createElement("span");v.className="detail-val";
+      if(pf.style){var badge=document.createElement("span");badge.style.cssText=pf.style;badge.textContent=pf.value;v.appendChild(badge);}
+      else v.textContent=pf.value;
+      row.appendChild(l);row.appendChild(v);pSec.appendChild(row);
+    });
+    body.appendChild(pSec);
   }
 
   // Self-condemn indicator
