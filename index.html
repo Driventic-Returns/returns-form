@@ -2277,6 +2277,117 @@ function _buildAnalytics(rows){
     opSel.addEventListener("change",redrawOp);
     redrawOp();
   })();
+
+  // ── 6. Custom chart — fully configurable X and Y ─────────────────────────
+  (function(){
+    var selStyle="padding:5px 9px;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;font-family:inherit;background:#fff;outline:none;color:#111;";
+
+    var ctrlWrap=document.createElement("div");
+    ctrlWrap.style.cssText="display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%";
+
+    function mkLabel(txt){var l=document.createElement("span");l.style.cssText="font-size:11px;color:#666;font-weight:600;white-space:nowrap";l.textContent=txt;return l;}
+
+    // X axis selector
+    var xSel=document.createElement("select");xSel.style.cssText=selStyle+"max-width:170px";
+    [["month","Month"],["operator","Operator"],["depot","Depot / Location"],["region","Destination Region"],["part","Part Name"]].forEach(function(o){
+      var opt=document.createElement("option");opt.value=o[0];opt.textContent=o[1];xSel.appendChild(opt);
+    });
+
+    // Y axis selector
+    var ySel=document.createElement("select");ySel.style.cssText=selStyle+"max-width:170px";
+    [["parts","Parts Returned"],["records","Records Submitted"]].forEach(function(o){
+      var opt=document.createElement("option");opt.value=o[0];opt.textContent=o[1];ySel.appendChild(opt);
+    });
+
+    // Top-N limit
+    var topSel=document.createElement("select");topSel.style.cssText=selStyle+"max-width:100px";
+    [["10","Top 10"],["20","Top 20"],["50","Top 50"],["0","All"]].forEach(function(o){
+      var opt=document.createElement("option");opt.value=o[0];opt.textContent=o[1];topSel.appendChild(opt);
+    });
+
+    var type6=["bar"];
+    var toggle6=_typeToggle("an-c6",function(t){type6[0]=t;redrawCustom();});
+
+    ctrlWrap.appendChild(mkLabel("X:"));ctrlWrap.appendChild(xSel);
+    ctrlWrap.appendChild(mkLabel("Y:"));ctrlWrap.appendChild(ySel);
+    ctrlWrap.appendChild(mkLabel("Show:"));ctrlWrap.appendChild(topSel);
+    ctrlWrap.appendChild(toggle6);
+
+    var cc6=_makeChartCard("Custom Chart",ctrlWrap,"an-c6");
+    container.appendChild(cc6.card);
+
+    function getXKey(r){
+      var xv=xSel.value;
+      if(xv==="month"){
+        var d=r.selectedDate||fmtDateFromTs(r.date)||"";
+        if(!d)return null;
+        var dt=new Date(d);if(isNaN(dt))return null;
+        var k=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
+        return{sort:k,label:new Date(k+"-01").toLocaleDateString("en-GB",{month:"short",year:"2-digit"})};
+      }
+      if(xv==="operator"){var v=getOperator(r)||"Unknown";return{sort:v,label:v};}
+      if(xv==="depot"){var v=getLocation(r)||"Unknown";return{sort:v,label:v};}
+      if(xv==="region"){var v=r.destination||"Germany / Austria";return{sort:v,label:v};}
+      return null; // part handled separately (one row per item)
+    }
+
+    function redrawCustom(){
+      var xv=xSel.value, yv=ySel.value;
+      var counts={}, sortKeys={};
+
+      if(xv==="part"){
+        filtered.forEach(function(r){
+          (r.items||[]).forEach(function(it){
+            if(!it.name)return;
+            var k=it.name;
+            if(!counts[k])counts[k]=0;
+            counts[k]+=(yv==="parts"?1:(counts[k]===0?1:0));
+          });
+          // for records mode, count record once per unique part name
+          if(yv==="records"){
+            var seen={};
+            (r.items||[]).forEach(function(it){if(it.name&&!seen[it.name]){seen[it.name]=true;counts[it.name]=(counts[it.name]||0)+1;}});
+          }
+        });
+        if(yv==="parts"){
+          counts={};
+          filtered.forEach(function(r){(r.items||[]).forEach(function(it){if(it.name)counts[it.name]=(counts[it.name]||0)+1;});});
+        }
+        Object.keys(counts).forEach(function(k){sortKeys[k]=k;});
+      } else {
+        filtered.forEach(function(r){
+          var kObj=getXKey(r); if(!kObj)return;
+          var k=kObj.sort;
+          sortKeys[k]=kObj.label;
+          if(!counts[k])counts[k]=0;
+          counts[k]+=(yv==="parts"?(r.items||[]).length:1);
+        });
+      }
+
+      var entries=Object.keys(counts).map(function(k){return{sort:k,label:sortKeys[k]||k,val:counts[k]};});
+      // Sort: months chronologically, everything else by value desc
+      if(xv==="month") entries.sort(function(a,b){return a.sort<b.sort?-1:1;});
+      else entries.sort(function(a,b){return b.val-a.val;});
+
+      var limit=parseInt(topSel.value)||0;
+      if(limit>0)entries=entries.slice(0,limit);
+
+      var labels=entries.map(function(e){return e.label;});
+      var data=entries.map(function(e){return e.val;});
+      var yLabel=ySel.options[ySel.selectedIndex].textContent;
+
+      // Update card title dynamically
+      cc6.card.querySelector(".an-card-title").textContent=
+        "Custom: "+xSel.options[xSel.selectedIndex].textContent+" vs "+yLabel;
+
+      _drawChart(g("an-c6"),labels,[{data:data,color:CHART_PALETTE[0]}],type6[0]);
+    }
+
+    xSel.addEventListener("change",redrawCustom);
+    ySel.addEventListener("change",redrawCustom);
+    topSel.addEventListener("change",redrawCustom);
+    redrawCustom();
+  })();
 }
 
 // ── Nominatim geocoder with localStorage cache ────────────────────────────
