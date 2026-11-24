@@ -1768,8 +1768,20 @@ function findFieldValue(rec,keywords){
   return"";
 }
 function getOperator(rec){
-  var v=findFieldValue(rec,["operator"]);
-  if(v)return v;
+  if(rec.fields){
+    var keys=Object.keys(rec.fields);
+    for(var _i=0;_i<keys.length;_i++){
+      var _fd=rec.fields[keys[_i]];
+      var _lbl=(_fd&&_fd.label||"").toLowerCase();
+      if(_lbl.indexOf("operator")===-1)continue;
+      // Skip if label also suggests a contact/phone/email field
+      if(/phone|number|tel|email|contact|mobile/.test(_lbl))continue;
+      var _v=_fd.value||"";
+      // Skip values that look like phone numbers or email addresses
+      if(/^[\d\s+\-()]{7,}$/.test(_v)||_v.indexOf("@")!==-1)continue;
+      if(_v)return _v;
+    }
+  }
   return(rec.customer&&rec.customer.name)||"";
 }
 function getEngineer(rec){
@@ -1949,6 +1961,51 @@ g("an-date-to").addEventListener("change",function(){if(_anRows)_buildAnalytics(
 // ── Canvas chart engine ──────────────────────────────────────────────────────
 var CHART_PALETTE=["#00c4b0","#0a1929","#f0ad4e","#3498db","#e74c3c","#9b59b6","#27ae60","#e67e22","#1abc9c","#2c3e50","#e91e63","#ff5722"];
 
+// Shared tooltip element
+var _anTooltip=(function(){
+  var d=document.createElement("div");
+  d.style.cssText="position:fixed;display:none;background:#1a1a2e;color:#fff;padding:9px 13px;border-radius:9px;font-size:12px;line-height:1.6;pointer-events:none;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:220px;white-space:nowrap";
+  document.body.appendChild(d);
+  return d;
+})();
+
+function _attachChartHover(canvas){
+  if(canvas._hoverReady)return;
+  canvas._hoverReady=true;
+  canvas.addEventListener("mousemove",function(e){
+    var meta=canvas._chartMeta; if(!meta)return;
+    var rect=canvas.getBoundingClientRect();
+    var sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+    var mx=(e.clientX-rect.left)*sx, my=(e.clientY-rect.top)*sy;
+    var hit=null;
+    if(meta.type==="bar"){
+      for(var i=0;i<meta.zones.length;i++){
+        var z=meta.zones[i];
+        if(mx>=z.x&&mx<=z.x+z.w&&my>=z.y&&my<=z.y+z.h){hit=z;break;}
+      }
+    } else {
+      var best=null,bestD=18;
+      for(var i=0;i<meta.zones.length;i++){
+        var z=meta.zones[i];
+        var d2=Math.sqrt((mx-z.cx)*(mx-z.cx)+(my-z.cy)*(my-z.cy));
+        if(d2<bestD){bestD=d2;best=z;}
+      }
+      hit=best;
+    }
+    if(hit){
+      var tip=_anTooltip;
+      tip.style.display="block";
+      var dsLine=hit.ds?'<span style="color:#aaa;font-size:11px">'+hit.ds+'</span><br>':"";
+      tip.innerHTML='<span style="font-weight:600">'+hit.label+'</span><br>'+dsLine+'<span style="font-size:18px;font-weight:700;color:'+hit.color+'">'+hit.value+'</span>';
+      tip.style.left=(e.clientX+14)+"px"; tip.style.top=(e.clientY-16)+"px";
+      canvas.style.cursor="crosshair";
+    } else {
+      _anTooltip.style.display="none"; canvas.style.cursor="";
+    }
+  });
+  canvas.addEventListener("mouseleave",function(){_anTooltip.style.display="none";canvas.style.cursor="";});
+}
+
 function _makeChartCard(title,controls,canvasId){
   var card=document.createElement("div");card.className="an-card";
   var head=document.createElement("div");head.className="an-card-head";
@@ -1987,15 +2044,14 @@ function _drawChart(canvas,labels,datasets,type,opts){
   var cw=W-padL-padR, ch=H-padT-padB;
   if(cw<=0||ch<=0)return;
 
-  // Max value across all datasets
   var allVals=[];datasets.forEach(function(ds){ds.data.forEach(function(v){allVals.push(v);});});
   var maxV=Math.max.apply(null,allVals)||1;
   var nice=Math.ceil(maxV/5)*5; var step=nice/5;
 
   // Grid + Y axis
   ctx.strokeStyle="#f0f0f0"; ctx.lineWidth=1; ctx.fillStyle="#999"; ctx.font="11px -apple-system,sans-serif";
-  for(var i=0;i<=5;i++){
-    var yv=i*step; var yp=padT+ch-(yv/nice)*ch;
+  for(var gi=0;gi<=5;gi++){
+    var yv=gi*step; var yp=padT+ch-(yv/nice)*ch;
     ctx.beginPath();ctx.moveTo(padL,yp);ctx.lineTo(padL+cw,yp);ctx.stroke();
     ctx.textAlign="right"; ctx.fillText(yv,padL-6,yp+4);
   }
@@ -2003,6 +2059,7 @@ function _drawChart(canvas,labels,datasets,type,opts){
   var n=labels.length;
   var barW=Math.min(48,Math.max(8,Math.floor(cw/Math.max(n,1)*0.55)));
   var groupW=cw/Math.max(n,1);
+  var zones=[];
 
   datasets.forEach(function(ds,di){
     var color=ds.color||CHART_PALETTE[di%CHART_PALETTE.length];
@@ -2016,13 +2073,12 @@ function _drawChart(canvas,labels,datasets,type,opts){
         xi===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
       });
       ctx.stroke();
-      // Dots
       ds.data.forEach(function(v,xi){
         var x=padL+xi*groupW+groupW/2;
         var y=padT+ch-(v/nice)*ch;
         ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();
+        zones.push({cx:x,cy:y,label:labels[xi],ds:ds.label||"",value:v,color:color});
       });
-      // Value labels
       ctx.fillStyle=color;ctx.font="bold 10px -apple-system,sans-serif";ctx.textAlign="center";
       ds.data.forEach(function(v,xi){
         if(!v)return;
@@ -2034,7 +2090,7 @@ function _drawChart(canvas,labels,datasets,type,opts){
       var dsOff=(di-(datasets.length-1)/2)*barW*1.1;
       ds.data.forEach(function(v,xi){
         var bx=padL+xi*groupW+groupW/2+dsOff-barW/2;
-        var bh=(v/nice)*ch;
+        var bh=Math.max(v?(v/nice)*ch:0,1);
         var by=padT+ch-bh;
         ctx.fillStyle=color;
         ctx.beginPath();
@@ -2044,23 +2100,24 @@ function _drawChart(canvas,labels,datasets,type,opts){
           ctx.fillStyle="#333";ctx.font="bold 10px -apple-system,sans-serif";ctx.textAlign="center";
           ctx.fillText(v,bx+barW/2,by-4);
         }
+        zones.push({x:bx,y:by,w:barW,h:bh,label:labels[xi],ds:ds.label||"",value:v,color:color});
       });
     }
   });
 
-  // X labels — rotated 40° to avoid overlap
+  // X labels — rotated ~37° to avoid overlap
   ctx.fillStyle="#555"; ctx.font="12px -apple-system,sans-serif"; ctx.textAlign="right";
   labels.forEach(function(lbl,xi){
     var x=padL+xi*groupW+groupW/2;
     var y=padT+ch+10;
     ctx.save();
     ctx.translate(x,y);
-    ctx.rotate(-0.65); // ~37 degrees
+    ctx.rotate(-0.65);
     ctx.fillText(String(lbl),0,0);
     ctx.restore();
   });
 
-  // Legend (if multiple datasets)
+  // Legend
   if(datasets.length>1){
     var lx=padL, ly=H-14;
     ctx.font="11px -apple-system,sans-serif";ctx.textAlign="left";
@@ -2071,6 +2128,10 @@ function _drawChart(canvas,labels,datasets,type,opts){
       lx+=ctx.measureText(ds.label||"").width+32;
     });
   }
+
+  // Store hit zones and wire hover
+  canvas._chartMeta={type:type,zones:zones};
+  _attachChartHover(canvas);
 }
 
 // ── Build all charts ─────────────────────────────────────────────────────────
@@ -2177,7 +2238,7 @@ function _buildAnalytics(rows){
       if(!d)return;
       var dt=new Date(d);if(isNaN(dt))return;
       var key=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
-      var op=findFieldValue(r,["operator","company","customer","name"])||"Unknown";
+      var op=getOperator(r)||"Unknown";
       if(allOps.indexOf(op)===-1)allOps.push(op);
       if(!opMonthMap[key])opMonthMap[key]={};
       opMonthMap[key][op]=(opMonthMap[key][op]||0)+(r.items||[]).length;
