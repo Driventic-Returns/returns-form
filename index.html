@@ -142,7 +142,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* analytics always single column */
 .rec-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
 .rec-toolbar h2{font-size:15px;font-weight:600}
-.tbl-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;overflow-x:auto}
+.tbl-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px 12px 0 0;overflow:hidden;overflow-x:auto}
+.tbl-scroll-mirror{overflow-x:auto;overflow-y:hidden;height:14px;background:#f4f4f4;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 12px 12px;position:sticky;bottom:0;z-index:40;cursor:default}
+.tbl-scroll-mirror-inner{height:1px}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#0a1929;background:#eef5f9;border-bottom:1px solid #d8e8f0;white-space:nowrap}
 td{padding:10px 14px;border-bottom:1px solid #f0f0f0;color:#333;vertical-align:middle;white-space:nowrap}
@@ -333,12 +335,13 @@ tr:hover td{background:#fafafa}
       </select>
       <input type="text" id="records-search" placeholder="Search..." style="flex:1">
     </div>
-    <div class="tbl-wrap">
+    <div class="tbl-wrap" id="records-tbl-wrap">
       <table>
         <thead id="records-thead"><tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th>Status</th><th>Update Status</th><th>View</th><th></th></tr></thead>
         <tbody id="records-body"></tbody>
       </table>
     </div>
+    <div class="tbl-scroll-mirror" id="records-scroll-mirror"><div class="tbl-scroll-mirror-inner" id="records-scroll-inner"></div></div>
   </div>
 
   <!-- ADMIN PAGE -->
@@ -1807,8 +1810,30 @@ function getLocation(rec){
   return findFieldValue(rec,["location"]);
 }
 
+// ── Sticky mirrored scrollbar for records table ──────────────────────────────
+(function(){
+  var _ready=false;
+  function _initStickyScroll(){
+    if(_ready)return; _ready=true;
+    var wrap=g("records-tbl-wrap");
+    var mirror=g("records-scroll-mirror");
+    var inner=g("records-scroll-inner");
+    if(!wrap||!mirror||!inner)return;
+    function syncWidth(){inner.style.width=wrap.scrollWidth+"px";}
+    syncWidth();
+    new ResizeObserver(syncWidth).observe(wrap);
+    var _syncing=false;
+    wrap.addEventListener("scroll",function(){if(_syncing)return;_syncing=true;mirror.scrollLeft=wrap.scrollLeft;_syncing=false;});
+    mirror.addEventListener("scroll",function(){if(_syncing)return;_syncing=true;wrap.scrollLeft=mirror.scrollLeft;_syncing=false;});
+  }
+  // Attach once when records page first loads
+  var _origInit=window._recordsStickyDone;
+  window._recordsStickyReady=_initStickyScroll;
+})();
+
 function initRecords(forceRefresh){
   if(!db){toast("Connecting...",false);return;}
+  if(window._recordsStickyReady)window._recordsStickyReady();
   // Update thead columns based on admin status
   var thead=document.getElementById("records-thead");
   if(thead) thead.innerHTML='<tr><th>FRT Number</th><th>Date</th><th>Operator</th><th>Location</th><th>Item</th><th style="white-space:nowrap">8D Required</th><th>Destination</th><th>Status</th>'+(isAdmin?'<th>Update Status</th><th title="Parts received in good condition — no significant leaks or damage" style="white-space:nowrap">Received OK ✓</th><th></th>':'')+'</tr>';
@@ -2759,6 +2784,9 @@ function renderRecordsTable(rows){
     });
   });
   } // end isAdmin status block
+
+  // Refresh sticky scrollbar inner width now that rows are rendered
+  (function(){var inner=g("records-scroll-inner");var wrap=g("records-tbl-wrap");if(inner&&wrap)setTimeout(function(){inner.style.width=wrap.scrollWidth+"px";},50);})();
 
   // Destination change — admin only
   if(isAdmin){
